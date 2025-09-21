@@ -1,0 +1,45 @@
+# Build results
+[Bb]in/
+[Oo]bj/
+[Ll]og/
+[Ll]ogs/
+
+# Visual Studio
+.vs/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# Visual Studio Code
+.vscode/
+
+# Rider
+.idea/
+
+# Autogerados
+*.dll
+*.exe
+*.app
+*.dbmdl
+*.bak
+*.log
+
+# Cache
+*.cache
+*.pdb
+*.mdb
+
+# Configurações locais
+*.userprefs
+
+# Pacotes
+*.nupkg
+*.snupkg
+*.nuspec
+packages/
+.nuget/
+
+# Outros
+[Tt]emp/
+*.tmp
