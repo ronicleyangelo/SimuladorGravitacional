@@ -112,3 +112,21 @@ code {
 .form-floating > .form-control-plaintext:focus::placeholder, .form-floating > .form-control:focus::placeholder {
     text-align: start;
 }
+.canvas-wrap {
+    border: 1px solid #444;
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+svg {
+    display: block;
+    width: 100%;
+    height: auto;
+}
+
+.controls {
+    padding: 1rem;
+    background-color: #1a1c35;
+    border-radius: 8px;
+    margin-top: 1rem;
+}
