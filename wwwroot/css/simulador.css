@@ -1,0 +1,35 @@
+﻿.sim-container {
+    display: flex;
+    gap: 1rem;
+    align-items: flex-start;
+}
+
+.canvas-wrap {
+    flex: 1 1 auto;
+    min-width: 320px;
+}
+
+.controls {
+    width: 280px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.body-list {
+    max-height: 300px;
+    overflow: auto;
+    border: 1px solid rgba(255,255,255,0.05);
+    padding: 8px;
+}
+
+.event-log {
+    max-height: 200px;
+    overflow: auto;
+    border: 1px solid rgba(255,255,255,0.05);
+    padding: 8px;
+}
+
+button {
+    padding: 6px 8px;
+}
