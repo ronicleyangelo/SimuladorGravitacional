@@ -1,0 +1,95 @@
+﻿@page "/"
+
+<PageTitle>Simulador</PageTitle>
+
+<div class="app-container">
+    <div class="header">
+        <h1><i class="fas fa-globe-americas"></i> Simulador Gravitacional</h1>
+        <div class="subtitle">Implementação em Blazor WebAssembly com processamento paralelo</div>
+    </div>
+
+    <div class="main-content">
+        <div class="simulation-section">
+            <div class="canvas-container">
+                <canvas id="simCanvas" width="800" height="600"></canvas>
+            </div>
+
+            <div class="controls">
+                <button id="btnIniciar" class="btn btn-primary"><i class="fas fa-play"></i> Iniciar</button>
+                <button id="btnParar" class="btn btn-danger" disabled><i class="fas fa-stop"></i> Parar</button>
+                <button id="btnResetar" class="btn btn-warning"><i class="fas fa-redo"></i> Reiniciar</button>
+                <button id="btnSalvar" class="btn btn-success"><i class="fas fa-save"></i> Salvar Estado</button>
+                <button id="btnCarregar" class="btn btn-primary"><i class="fas fa-folder-open"></i> Carregar</button>
+            </div>
+
+            <div class="slider-container">
+                <div class="slider-label">
+                    <span><i class="fas fa-tachometer-alt"></i> Velocidade de Simulação</span>
+                    <span id="velocidadeValue" class="slider-value">1.0x</span>
+                </div>
+                <input type="range" id="sliderVelocidade" min="0.1" max="2" step="0.1" value="1.0">
+            </div>
+        </div>
+
+        <div class="panel">
+            <h2 class="panel-title"><i class="fas fa-cogs"></i> Configurações</h2>
+
+            <div class="form-group">
+                <label class="form-label">Número de Corpos</label>
+                <input type="number" id="numCorpos" class="form-control" min="2" max="50" value="8">
+            </div>
+
+            <div class="slider-container">
+                <div class="slider-label">
+                    <span><i class="fas fa-weight-hanging"></i> Força Gravitacional</span>
+                    <span id="gravidadeValue" class="slider-value">0.5</span>
+                </div>
+                <input type="range" id="sliderGravidade" min="0.1" max="1" step="0.1" value="0.5">
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Nome do Arquivo para Salvar</label>
+                <input type="text" id="nomeArquivo" class="form-control" value="universo.txt">
+            </div>
+
+            <h2 class="panel-title"><i class="fas fa-chart-bar"></i> Estatísticas</h2>
+
+            <div class="stats">
+                <div class="stat">
+                    <div class="stat-value" id="statCorpos">8</div>
+                    <div class="stat-label">Corpos</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-value" id="statIteracoes">0</div>
+                    <div class="stat-label">Iterações</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-value" id="statColisoes">0</div>
+                    <div class="stat-label">Colisões</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-value" id="statFPS">0</div>
+                    <div class="stat-label">FPS</div>
+                </div>
+            </div>
+
+            <div class="body-info">
+                <h3>Corpos no Sistema</h3>
+                <div class="body-list" id="bodyList">
+                    <!-- Lista de corpos será preenchida via JavaScript -->
+                </div>
+            </div>
+
+            <h2 class="panel-title"><i class="fas fa-list-alt"></i> Eventos</h2>
+
+            <div class="events-log" id="eventLog">
+                <div class="event-item">Sistema inicializado. Pronto para simular.</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="footer">
+        Desenvolvido para UCL - Faculdade do CEN - Análise e Desenvolvimento de Sistemas
+    </div>
+</div>
+
