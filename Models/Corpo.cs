@@ -2,5 +2,6 @@
 {
     public class Corpo
     {
+        private String nome;
     }
 }
