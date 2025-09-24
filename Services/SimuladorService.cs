@@ -11,12 +11,12 @@ namespace ProgramacaoAvancada.Services
         public int Iteracoes { get; private set; }
         public int Colisoes { get; private set; }
         public bool Rodando { get; private set; }
-        public double Velocidade { get; set; } = 1.0;
+
         public double Gravidade { get; set; } = 0.5;
         public int NumCorpos { get; set; } = 8;
 
         public double CanvasWidth { get; set; } = 800;
-        public double CanvasHeight { get; set; } = 500;
+        public double CanvasHeight { get; set; } = 600;
 
         public List<string> Eventos { get; } = new();
 
@@ -38,36 +38,53 @@ namespace ProgramacaoAvancada.Services
             AdicionarEvento($"Simulação reiniciada com {NumCorpos} corpos.");
         }
 
-        public void Iniciar() { Rodando = true; AdicionarEvento("Simulação iniciada."); }
-        public void Parar() { Rodando = false; AdicionarEvento("Simulação pausada."); }
+        public void Iniciar()
+        {
+            Rodando = true;
+            AdicionarEvento("Simulação iniciada.");
+        }
 
-        public void Atualizar()
+        public void Parar()
+        {
+            Rodando = false;
+            AdicionarEvento("Simulação pausada.");
+        }
+
+        public void Atualizar(double deltaTime)
         {
             if (!Rodando) return;
 
-            // Calcular forças gravitacionais
             for (int i = 0; i < Corpos.Count; i++)
+            {
                 for (int j = i + 1; j < Corpos.Count; j++)
-                    Corpos[i].AplicarGravidade(Corpos[j], Gravidade, G);
+                {
+                    var fatorSimulacao = 1e8 * Gravidade; // força visível
+                    Corpos[i].AplicarGravidade(Corpos[j], fatorSimulacao, deltaTime);
+                }
+            }
 
-            // Atualizar posições
             foreach (var c in Corpos)
-                c.AtualizarPosicao(Velocidade, CanvasWidth, CanvasHeight);
+                c.AtualizarPosicao(CanvasWidth, CanvasHeight);
 
-            // Detectar colisões
             DetectarColisoes();
-
             Iteracoes++;
         }
 
         private void DetectarColisoes()
         {
+            var fusoes = new List<Corpo>();
+            var removidos = new HashSet<Corpo>();
+
             for (int i = 0; i < Corpos.Count; i++)
             {
                 for (int j = i + 1; j < Corpos.Count; j++)
                 {
                     var a = Corpos[i];
                     var b = Corpos[j];
+
+                    if (removidos.Contains(a) || removidos.Contains(b))
+                        continue;
+
                     var dx = b.PosX - a.PosX;
                     var dy = b.PosY - a.PosY;
                     var dist = Math.Sqrt(dx * dx + dy * dy);
@@ -77,18 +94,18 @@ namespace ProgramacaoAvancada.Services
                         Colisoes++;
                         AdicionarEvento($"Colisão: {a.Nome} com {b.Nome}");
 
-                        // Fusão
-                        var maior = Corpo.Fundir(a, b);
-                        var menor = a == maior ? b : a;
-                        Corpos.Remove(menor);
-
-                        // Reinicia loop externo
-                        i = -1;
-                        break;
+                        var novo = Corpo.Fundir(a, b);
+                        fusoes.Add(novo);
+                        removidos.Add(a);
+                        removidos.Add(b);
                     }
                 }
             }
+
+            Corpos.RemoveAll(c => removidos.Contains(c));
+            Corpos.AddRange(fusoes);
         }
+
 
         public void AdicionarEvento(string mensagem)
         {

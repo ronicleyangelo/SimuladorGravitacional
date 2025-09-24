@@ -3,10 +3,10 @@
 @implements IDisposable
 @inject IJSRuntime JS
 
-    <PageTitle> Simulador - Blazor WASM</PageTitle>
-
+<PageTitle>Simulador - Blazor WASM</PageTitle>
+@* 
 <div class="sim-container">
-  <div class="canvas-wrap">
+    <div class="canvas-wrap">
         <svg @ref="svgElement" width="@Simulacao.CanvasWidth" height="@Simulacao.CanvasHeight"
              style="background-color: #0a0c25;">
             @foreach (var corpo in Simulacao.Corpos)
@@ -15,65 +15,90 @@
                         cy="@corpo.PosY.ToString(System.Globalization.CultureInfo.InvariantCulture)"
                         r="@corpo.Raio.ToString(System.Globalization.CultureInfo.InvariantCulture)"
                         fill="@corpo.Cor" opacity="0.8" />
-
             }
 
-            <!-- Estatísticas -->
             <text x="10" y="20" fill="#a0a0ff" font-size="12px" font-family="Arial">
                 Corpos: @Simulacao.Corpos.Count | Iterações: @Simulacao.Iteracoes |
                 Colisões: @Simulacao.Colisoes | FPS: @fps
             </text>
         </svg>
-  </div>
-
-  <div class="controls">
-    <!-- Controles permanecem os mesmos -->
-    <div>
-      <button @onclick="Iniciar" disabled="@Simulacao.Rodando">Iniciar</button>
-      <button @onclick="Parar" disabled="@( !Simulacao.Rodando )">Parar</button>
-      <button @onclick="Resetar" > Resetar</button >
-    </div >
-
-    <div>
-      <label>Velocidade: @Simulacao.Velocidade.ToString("0.0")x</label>
-      <input type="range" min="0.1" max="5" step="0.1" @bind="Simulacao.Velocidade" />
     </div>
 
-    <div>
-      <label>Gravidade: @Simulacao.Gravidade.ToString("0.0")</label>
-      <input type="range" min="0" max="5" step="0.1" @bind="Simulacao.Gravidade" />
-    </div>
+    <div class="controls">
+        <div>
+            <button @onclick="Iniciar" disabled="@Simulacao.Rodando">Iniciar</button>
+            <button @onclick="Parar" disabled="@( !Simulacao.Rodando )">Parar</button>
+            <button @onclick="Resetar"> Resetar</button>
+        </div>
+
 
         <div>
             <label>Número de corpos</label>
             <input type="number" min="1" max="60" @bind="Simulacao.NumCorpos" @bind:after="OnNumCorposChanged" />
         </div>
+    </div>
+</div> *@
 
-    <!--Resto dos controles permanece igual-- >
-  </div >
-</div >
+<PageTitle>Simulador - Blazor WASM</PageTitle>
+
+<div class="sim-container">
+    <div class="canvas-wrap">
+        <svg @ref="svgElement" class="sim-canvas"
+             width="@Simulacao.CanvasWidth"
+             height="@Simulacao.CanvasHeight"
+             style="background-color: #0a0c25;">
+            @foreach (var corpo in Simulacao.Corpos)
+            {
+                <circle cx="@corpo.PosX.ToString(System.Globalization.CultureInfo.InvariantCulture)"
+                        cy="@corpo.PosY.ToString(System.Globalization.CultureInfo.InvariantCulture)"
+                        r="@corpo.Raio.ToString(System.Globalization.CultureInfo.InvariantCulture)"
+                        fill="@corpo.Cor" opacity="0.8" />
+            }
+
+            <text x="10" y="20" class="stats-text">
+                Corpos: @Simulacao.Corpos.Count | Iterações: @Simulacao.Iteracoes |
+                Colisões: @Simulacao.Colisoes | FPS: @fps
+            </text>
+        </svg>
+    </div>
+
+    <div class="controls">
+        <div class="buttons">
+            <button @onclick="Iniciar" disabled="@Simulacao.Rodando">Iniciar</button>
+            <button @onclick="Parar" disabled="@( !Simulacao.Rodando )">Parar</button>
+            <button @onclick="Resetar"> Resetar</button>
+        </div>
+
+        <div class="inputs">
+            <label>Número de corpos</label>
+            <input type="number" min="1" max="60" @bind="Simulacao.NumCorpos" @bind:after="OnNumCorposChanged" />
+        </div>
+    </div>
+</div>
+
 
 @code {
-  private ElementReference svgElement;
-  private System.Timers.Timer ? loop;
-  private long lastTimestamp = 0;
-  private int fps = 0;
-  private string arquivoNome = "universo.json";
+    private ElementReference svgElement;
+    private System.Timers.Timer? loop;
+    private long lastTimestamp = 0;
+    private int fps = 0;
+    private string arquivoNome = "universo.json";
+    private const double deltaTime = 0.016; // 16 ms
 
-  protected override async Task OnAfterRenderAsync(bool firstRender)
+    protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (firstRender) {
-            // Ajustar tamanho do SVG
-            var w = await JS.InvokeAsync < int > ("eval", "document.querySelector('.canvas-wrap').clientWidth");
-            var h = Math.Min((int)(await JS.InvokeAsync < int > ("eval", "window.innerHeight") * 0.5), 600);
+        if (firstRender)
+        {
+            var w = await JS.InvokeAsync<int>("eval", "document.querySelector('.canvas-wrap').clientWidth");
+            var h = Math.Min((int)(await JS.InvokeAsync<int>("eval", "window.innerHeight") * 0.5), 600);
             Simulacao.CanvasWidth = w;
             Simulacao.CanvasHeight = h;
 
-            // Iniciar loop de animação
             loop = new System.Timers.Timer(16);
-            loop.Elapsed += async (_, __) => {
-                Simulacao.Atualizar();
-                await InvokeAsync(StateHasChanged); // Força re-renderização
+            loop.Elapsed += async (_, __) =>
+            {
+                Simulacao.Atualizar(deltaTime); // passa deltaTime
+                await InvokeAsync(StateHasChanged);
             };
             loop.AutoReset = true;
             loop.Start();
@@ -85,41 +110,15 @@
         Simulacao.Resetar();
     }
 
-
     void Iniciar() => Simulacao.Iniciar();
     void Parar() => Simulacao.Parar();
-
     void Resetar()
     {
         Simulacao.NumCorpos = Math.Max(1, Simulacao.NumCorpos);
         Simulacao.Resetar();
     }
 
-  private async Task SalvarEstado()
-    {
-        var json = Simulacao.ObterEstadoJson();
-        // Para salvar arquivo ainda precisa de JS interop
-        await JS.InvokeVoidAsync("simuladorInterop.downloadFile",
-            arquivoNome ?? "universo.json", json);
-        Simulacao.AdicionarEvento($"Estado salvo em {arquivoNome}");
-    }
-
-  private async Task CarregarEstado()
-    {
-        try {
-            // Para carregar arquivo ainda precisa de JS interop
-            var content = await JS.InvokeAsync < string > ("simuladorInterop.readFile");
-            if (!string.IsNullOrWhiteSpace(content)) {
-                Simulacao.CarregarEstadoJson(content);
-            }
-        }
-        catch (Exception ex)
-        {
-            Simulacao.AdicionarEvento($"Erro ao carregar arquivo: {ex.Message}");
-        }
-    }
-
-  public void Dispose()
+    public void Dispose()
     {
         loop?.Stop();
         loop?.Dispose();
