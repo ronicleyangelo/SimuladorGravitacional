@@ -1,7 +1,6 @@
 <!DOCTYPE html>
-<html lang="en">
-
-<head>
+<html lang="pt-BR">
+  <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>ProgramacaoAvancada</title>
@@ -10,21 +9,243 @@
     <link rel="stylesheet" href="css/app.css" />
     <link rel="stylesheet" href="css/home.css" />
     <link href="css/simulador.css" rel="stylesheet" />
-    <link rel="icon" type="image/png" href="favicon.png" />
+    <link rel="icon" type="image/png" href="" />
     <link href="ProgramacaoAvancada.styles.css" rel="stylesheet" />
 
-</head>
+    <style>
+      /* Loader - Mesmo estilo do anterior */
+      #loading {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-direction: column;
+        background: #111;
+        color: #fff;
+        z-index: 9999;
+        font-family: Arial, sans-serif;
+        opacity: 1;
+        transition: opacity 1s ease;
+      }
 
-<body>
-    <div id="app">
-        <svg class="loading-progress">
-            <circle r="40%" cx="50%" cy="50%" />
-            <circle r="40%" cx="50%" cy="50%" />
-        </svg>
-        <div class="loading-progress-text"></div>
+      #loading.hidden {
+        opacity: 0;
+        pointer-events: none;
+      }
+
+      #progress-bar {
+        width: 80%;
+        max-width: 300px;
+        height: 20px;
+        background: #333;
+        border-radius: 10px;
+        overflow: hidden;
+        margin-top: 1rem;
+        box-shadow: 0 0 10px rgba(0, 0, 0, 0.6) inset;
+      }
+
+      #progress-fill {
+        width: 0%;
+        height: 100%;
+        background: linear-gradient(90deg, #0d6efd, #00d4ff);
+        transition: width 0.3s ease;
+        box-shadow: 0 0 15px #0d6efd;
+      }
+
+      #progress-text {
+        margin-top: 0.5rem;
+        font-size: 1rem;
+        color: #a0cfff;
+      }
+
+      /* Esconder o loader padrão do Blazor */
+      .loading-progress {
+        display: none;
+      }
+      .loading-progress-text {
+        display: none;
+      }
+    </style>
+  </head>
+
+  <body>
+    <!-- Loader personalizado -->
+    <div id="loading">
+      <div>🚀 Carregando aplicação...</div>
+      <div id="progress-bar">
+        <div id="progress-fill"></div>
+      </div>
+      <div id="progress-text">0%</div>
     </div>
-    <script src="_framework/blazor.webassembly.js"></script>
-    <script src="js/simulador.js"></script>
-</body>
 
+    <!-- App Blazor -->
+    <div id="app">
+      <!-- Loader padrão do Blazor (será escondido) -->
+      <svg class="loading-progress">
+        <circle r="40%" cx="50%" cy="50%" />
+        <circle r="40%" cx="50%" cy="50%" />
+      </svg>
+      <div class="loading-progress-text"></div>
+    </div>
+
+    <script src="_framework/blazor.webassembly.js" autostart="false"></script>
+    <script src="js/simulador.js"></script>
+
+    <script>
+      // Função para baixar arquivo
+      window.baixarArquivo = (nome, conteudo) => {
+        const blob = new Blob([conteudo], {
+          type: "text/plain;charset=utf-8;",
+        });
+        const link = document.createElement("a");
+        link.href = URL.createObjectURL(blob);
+        link.download = nome;
+        link.click();
+      };
+
+      // Funções para controle do loader
+      window.hideLoader = function () {
+        const loading = document.getElementById("loading");
+        if (loading) {
+          loading.classList.add("hidden");
+          setTimeout(() => {
+            loading.style.display = "none";
+          }, 1000);
+        }
+      };
+
+      window.showLoader = function (message) {
+        const loading = document.getElementById("loading");
+        const text = document.getElementById("progress-text");
+        if (loading && text) {
+          if (message) {
+            text.textContent = message;
+          }
+          loading.style.display = "flex";
+          loading.classList.remove("hidden");
+        }
+      };
+    </script>
+
+    <script>
+      // Inicialização do Blazor com loader personalizado
+      (async function () {
+        const fill = document.getElementById("progress-fill");
+        const text = document.getElementById("progress-text");
+        const loading = document.getElementById("loading");
+
+        let progress = 0;
+        let progressInterval;
+
+        function updateProgress(percent) {
+          if (fill && text) {
+            fill.style.width = percent + "%";
+            text.textContent = Math.round(percent) + "%";
+          }
+        }
+
+        function completeLoading() {
+          console.log("Completando carregamento...");
+          if (progressInterval) {
+            clearInterval(progressInterval);
+          }
+          updateProgress(100);
+
+          setTimeout(() => {
+            if (loading) {
+              loading.classList.add("hidden");
+              setTimeout(() => {
+                loading.style.display = "none";
+              }, 1000);
+            }
+          }, 500);
+        }
+
+        // Progresso simulado
+        progressInterval = setInterval(() => {
+          if (progress < 90) {
+            progress += Math.random() * 15;
+            if (progress > 90) progress = 90;
+            updateProgress(progress);
+          }
+        }, 300);
+
+        try {
+          console.log("Iniciando Blazor WebAssembly...");
+
+          await Blazor.start();
+
+          console.log("Blazor.start() completado - aguardando renderização...");
+
+          // Aguarda um pouco para garantir que o Blazor renderizou
+          setTimeout(() => {
+            completeLoading();
+          }, 1000);
+        } catch (error) {
+          console.error("Erro ao iniciar Blazor:", error);
+          if (progressInterval) {
+            clearInterval(progressInterval);
+          }
+          if (text) {
+            text.textContent = "Erro ao carregar";
+          }
+          if (fill) {
+            fill.style.background = "#dc3545";
+          }
+        }
+      })();
+
+      // Seu código existente para a simulação
+      // Controle do status da simulação
+      const statusIndicator = document.getElementById("statusIndicator");
+      let isPaused = false;
+
+      // Simulação de alternância de status (para demonstração)
+      if (statusIndicator) {
+        setInterval(() => {
+          isPaused = !isPaused;
+          if (isPaused) {
+            statusIndicator.textContent = "● Pausada";
+            statusIndicator.classList.add("paused");
+          } else {
+            statusIndicator.textContent = "● Ativa";
+            statusIndicator.classList.remove("paused");
+          }
+        }, 3000);
+      }
+
+      // Atualização dinâmica das estatísticas (exemplo)
+      setInterval(() => {
+        if (!isPaused) {
+          const iterationsElement = document.querySelector(
+            ".stat-card:nth-child(2) .stat-value"
+          );
+          if (iterationsElement) {
+            const currentIterations = parseInt(iterationsElement.textContent);
+            iterationsElement.textContent = currentIterations + 1;
+          }
+        }
+      }, 1000);
+
+      // Fallback global - esconde o loader após 10 segundos no máximo
+      setTimeout(() => {
+        const loading = document.getElementById("loading");
+        if (
+          loading &&
+          loading.style.display !== "none" &&
+          !loading.classList.contains("hidden")
+        ) {
+          console.log("Fallback: escondendo loader por timeout");
+          loading.classList.add("hidden");
+          setTimeout(() => {
+            loading.style.display = "none";
+          }, 1000);
+        }
+      }, 10000);
+    </script>
+  </body>
 </html>

@@ -1,16 +1,12 @@
 ﻿@inherits LayoutComponentBase
-<div class="page">
-    <div class="sidebar">
-        <NavMenu />
-    </div>
+<!-- Conteúdo principal -->
+<main class="flex-fill container my-4">
+    <article>
+        @Body
+    </article>
+</main>
 
-    <main>
-        @* <div class="top-row px-4">
-            <a href="https://learn.microsoft.com/aspnet/core/" target="_blank">About</a>
-        </div> *@
-
-        <article class="">
-            @Body
-        </article>
-    </main>
-</div>
+<!-- Rodapé -->
+<footer class="bg-light text-center py-3 mt-auto border-top">
+    <small>&copy; @(DateTime.Now.Year) - Minha Aplicação</small>
+</footer>

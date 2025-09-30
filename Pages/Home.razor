@@ -1,103 +1,151 @@
 ﻿@page "/"
 @inject ProgramacaoAvancada.Services.SimuladorService Simulacao
-@implements IDisposable
 @inject IJSRuntime JS
+@implements IDisposable
 
-<PageTitle>Simulador - Blazor WASM</PageTitle>
-@* 
-<div class="sim-container">
-    <div class="canvas-wrap">
-        <svg @ref="svgElement" width="@Simulacao.CanvasWidth" height="@Simulacao.CanvasHeight"
-             style="background-color: #0a0c25;">
-            @foreach (var corpo in Simulacao.Corpos)
-            {
-                <circle cx="@corpo.PosX.ToString(System.Globalization.CultureInfo.InvariantCulture)"
+<PageTitle>🌌 Simulador Gravitacional 2D</PageTitle>
+
+<div class="sim-container @(Simulacao.Rodando ? "simulacao-ativa" : "")">
+    <!-- Área principal da simulação -->
+    <div class="simulation-area">
+        <div class="canvas-wrap">
+            <svg @ref="svgElement" width="@Simulacao.CanvasWidth" height="@Simulacao.CanvasHeight"
+                style="background-color: transparent;">
+                @foreach (var corpo in Simulacao.Corpos)
+                {
+                    <circle cx="@corpo.PosX.ToString(System.Globalization.CultureInfo.InvariantCulture)"
                         cy="@corpo.PosY.ToString(System.Globalization.CultureInfo.InvariantCulture)"
-                        r="@corpo.Raio.ToString(System.Globalization.CultureInfo.InvariantCulture)"
-                        fill="@corpo.Cor" opacity="0.8" />
+                        r="@corpo.Raio.ToString(System.Globalization.CultureInfo.InvariantCulture)" fill="@corpo.Cor"
+                        opacity="0.9" filter="url(#glow)" />
+                }
+
+                <text x="10" y="20" fill="#a0a0ff" font-size="12px">
+                    Corpos: @Simulacao.Corpos.Count | Iterações: @Simulacao.Iteracoes | Colisões: @Simulacao.Colisoes
+                </text>
+
+                <!-- Efeito de glow para os corpos -->
+                <defs>
+                    <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+                        <feGaussianBlur stdDeviation="3" result="coloredBlur" />
+                        <feMerge>
+                            <feMergeNode in="coloredBlur" />
+                            <feMergeNode in="SourceGraphic" />
+                        </feMerge>
+                    </filter>
+                </defs>
+            </svg>
+        </div>
+
+        <!-- Estatísticas em tempo real - VISÍVEIS EM TELA CHEIA -->
+        <div class="stats-bar">
+            <div class="stat-item">
+                <span class="stat-value">@Simulacao.Corpos.Count</span>
+                <span class="stat-label">Corpos</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-value">@Simulacao.Iteracoes</span>
+                <span class="stat-label">Iterações</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-value">@Simulacao.Colisoes</span>
+                <span class="stat-label">Colisões</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-value status-indicator @(Simulacao.Rodando ? "status-ativa" : "status-pausada")">
+                    @(Simulacao.Rodando ? "● Ativa" : "● Pausada")
+                </span>
+                <span class="stat-label">Status</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Painel lateral moderno -->
+    <div class="side-panel">
+        <div class="panel-header">
+            <h1>🌌 Simulador Gravitacional</h1>
+            <p>Controle a simulação em tempo real</p>
+        </div>
+
+        <div class="controls-container">
+            <!-- Controles na parte superior -->
+            <div class="controls">
+                <div class="control-group">
+                    <label for="numCorpos">🎯 Quantidade de Corpos</label>
+                    <input type="number" id="numCorpos" @bind="Simulacao.NumCorpos" @bind:event="oninput"
+                        min="1" max="50" class="num-input" />
+                    <small style="color: #a0a0ff; font-size: 0.8rem;">
+                        @(Simulacao.Corpos.Count != Simulacao.NumCorpos ? "Clique em Iniciar para aplicar" : "Quantidade aplicada")
+                    </small>
+                </div>
+
+                <div class="button-group">
+                    <button @onclick="Iniciar" disabled="@Simulacao.Rodando" class="btn btn-start">
+                        <span>▶️</span> Iniciar
+                    </button>
+                    <button @onclick="Parar" disabled="@(!Simulacao.Rodando)" class="btn btn-stop">
+                        <span>⏸️</span> Parar
+                    </button>
+                    <button @onclick="Resetar" class="btn btn-reset">
+                        <span>🔄</span> Resetar
+                    </button>
+                    <button @onclick="Salvar" class="btn btn-save">
+                        <span>💾</span> Salvar Arquivo
+                    </button>
+                    <label class="btn btn-load">
+                        <span>📂</span> Carregar Arquivo
+                        <InputFile OnChange="OnFileUpload" accept=".txt" hidden />
+                    </label>
+                </div>
+            </div>
+
+            @if (!string.IsNullOrEmpty(mensagem))
+            {
+                <div class="mensagem">@mensagem</div>
             }
 
-            <text x="10" y="20" fill="#a0a0ff" font-size="12px" font-family="Arial">
-                Corpos: @Simulacao.Corpos.Count | Iterações: @Simulacao.Iteracoes |
-                Colisões: @Simulacao.Colisoes | FPS: @fps
-            </text>
-        </svg>
-    </div>
-
-    <div class="controls">
-        <div>
-            <button @onclick="Iniciar" disabled="@Simulacao.Rodando">Iniciar</button>
-            <button @onclick="Parar" disabled="@( !Simulacao.Rodando )">Parar</button>
-            <button @onclick="Resetar"> Resetar</button>
-        </div>
-
-
-        <div>
-            <label>Número de corpos</label>
-            <input type="number" min="1" max="60" @bind="Simulacao.NumCorpos" @bind:after="OnNumCorposChanged" />
-        </div>
-    </div>
-</div> *@
-
-<PageTitle>Simulador - Blazor WASM</PageTitle>
-
-<div class="sim-container">
-    <div class="canvas-wrap">
-        <svg @ref="svgElement" class="sim-canvas"
-             width="@Simulacao.CanvasWidth"
-             height="@Simulacao.CanvasHeight"
-             style="background-color: #0a0c25;">
-            @foreach (var corpo in Simulacao.Corpos)
-            {
-                <circle cx="@corpo.PosX.ToString(System.Globalization.CultureInfo.InvariantCulture)"
-                        cy="@corpo.PosY.ToString(System.Globalization.CultureInfo.InvariantCulture)"
-                        r="@corpo.Raio.ToString(System.Globalization.CultureInfo.InvariantCulture)"
-                        fill="@corpo.Cor" opacity="0.8" />
-            }
-
-            <text x="10" y="20" class="stats-text">
-                Corpos: @Simulacao.Corpos.Count | Iterações: @Simulacao.Iteracoes |
-                Colisões: @Simulacao.Colisoes | FPS: @fps
-            </text>
-        </svg>
-    </div>
-
-    <div class="controls">
-        <div class="buttons">
-            <button @onclick="Iniciar" disabled="@Simulacao.Rodando">Iniciar</button>
-            <button @onclick="Parar" disabled="@( !Simulacao.Rodando )">Parar</button>
-            <button @onclick="Resetar"> Resetar</button>
-        </div>
-
-        <div class="inputs">
-            <label>Número de corpos</label>
-            <input type="number" min="1" max="60" @bind="Simulacao.NumCorpos" @bind:after="OnNumCorposChanged" />
+            <!-- Event-log ocupando o restante do espaço -->
+            <div class="event-log">
+                <h3>📜 Log de Eventos</h3>
+                <div class="event-list">
+                    @if (Simulacao.Eventos.Any())
+                    {
+                        @foreach (var evento in Simulacao.Eventos)
+                        {
+                            <div class="event-item">@evento</div>
+                        }
+                    }
+                    else
+                    {
+                        <div class="event-item" style="text-align: center; opacity: 0.7; font-style: italic;">
+                            ⏳ Aguardando eventos da simulação...
+                        </div>
+                    }
+                </div>
+            </div>
         </div>
     </div>
 </div>
 
-
 @code {
     private ElementReference svgElement;
     private System.Timers.Timer? loop;
-    private long lastTimestamp = 0;
-    private int fps = 0;
-    private string arquivoNome = "universo.json";
-    private const double deltaTime = 0.016; // 16 ms
+    private string mensagem = string.Empty;
+    private const double deltaTime = 0.016;
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (firstRender)
         {
-            var w = await JS.InvokeAsync<int>("eval", "document.querySelector('.canvas-wrap').clientWidth");
-            var h = Math.Min((int)(await JS.InvokeAsync<int>("eval", "window.innerHeight") * 0.5), 600);
+            var w = await JS.InvokeAsync<int>("eval", "document.querySelector('.simulation-area').clientWidth");
+            var h = await JS.InvokeAsync<int>("eval", "document.querySelector('.simulation-area').clientHeight");
+
             Simulacao.CanvasWidth = w;
             Simulacao.CanvasHeight = h;
 
             loop = new System.Timers.Timer(16);
             loop.Elapsed += async (_, __) =>
             {
-                Simulacao.Atualizar(deltaTime); // passa deltaTime
+                Simulacao.Atualizar(deltaTime);
                 await InvokeAsync(StateHasChanged);
             };
             loop.AutoReset = true;
@@ -105,17 +153,60 @@
         }
     }
 
-    private void OnNumCorposChanged()
+    void Iniciar()
     {
-        Simulacao.Resetar();
+        Simulacao.Iniciar();
+        mensagem = "🚀 Simulação iniciada!";
+        StateHasChanged();
     }
 
-    void Iniciar() => Simulacao.Iniciar();
-    void Parar() => Simulacao.Parar();
+    void Parar()
+    {
+        Simulacao.Parar();
+        mensagem = "⏸️ Simulação pausada";
+        StateHasChanged();
+    }
+
     void Resetar()
     {
         Simulacao.NumCorpos = Math.Max(1, Simulacao.NumCorpos);
         Simulacao.Resetar();
+        mensagem = $"🔄 Resetado com {Simulacao.NumCorpos} corpos";
+        StateHasChanged();
+    }
+
+    async Task Salvar()
+    {
+        try
+        {
+            string conteudo = Simulacao.GerarConteudoArquivo(Simulacao.Corpos, Simulacao.Iteracoes, deltaTime);
+            await JS.InvokeVoidAsync("baixarArquivo", "estado_simulacao.txt", conteudo);
+            mensagem = "✅ Arquivo salvo com sucesso!";
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            mensagem = $"❌ Erro ao salvar: {ex.Message}";
+            StateHasChanged();
+        }
+    }
+
+    async Task OnFileUpload(InputFileChangeEventArgs e)
+    {
+        try
+        {
+            var file = e.File;
+            using var reader = new StreamReader(file.OpenReadStream());
+            var conteudo = await reader.ReadToEndAsync();
+            Simulacao.CarregarDeTxt(conteudo);
+            mensagem = $"📂 Arquivo '{file.Name}' carregado!";
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            mensagem = $"❌ Erro ao carregar: {ex.Message}";
+            StateHasChanged();
+        }
     }
 
     public void Dispose()
