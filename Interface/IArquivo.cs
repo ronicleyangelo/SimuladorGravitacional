@@ -1,4 +1,6 @@
 ﻿using System.Collections.Generic;
+using ProgramacaoAvancada.Models;
+using ProgramacaoAvancada.Interface;
 
 namespace ProgramacaoAvancada.Interface
 {

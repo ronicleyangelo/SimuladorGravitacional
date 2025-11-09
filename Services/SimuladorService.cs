@@ -1,10 +1,6 @@
 ﻿using ProgramacaoAvancada.Models;
 using ProgramacaoAvancada.Interface;
 using ProgramacaoAvancada.Arquivos;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
 using Microsoft.JSInterop;
 
 namespace ProgramacaoAvancada.Services
@@ -30,9 +26,10 @@ namespace ProgramacaoAvancada.Services
 
         private readonly string caminhoArquivo = "estado_simulacao.txt";
 
-        public SimuladorService(IArquivo<Corpo> arquivo = null)
+        // Em SimuladorService.cs
+        public SimuladorService()
         {
-            gerenciadorArquivo = arquivo ?? new Arquivo();
+            gerenciadorArquivo = new Arquivo();  // ← Cria diretamente
             universo = new Universo(CanvasWidth, CanvasHeight, 1e10 * Gravidade);
             Resetar();
         }
