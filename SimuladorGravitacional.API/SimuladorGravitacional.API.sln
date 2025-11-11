@@ -1,0 +1,24 @@
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.5.2.0
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SimuladorGravitacional.API", "SimuladorGravitacional.API.csproj", "{FC07A1B6-7ECD-34B1-0DF2-2AC0250E653A}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{FC07A1B6-7ECD-34B1-0DF2-2AC0250E653A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{FC07A1B6-7ECD-34B1-0DF2-2AC0250E653A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{FC07A1B6-7ECD-34B1-0DF2-2AC0250E653A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{FC07A1B6-7ECD-34B1-0DF2-2AC0250E653A}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {6060AFE2-4A20-482C-8D50-1133F5327EA4}
+	EndGlobalSection
+EndGlobal
