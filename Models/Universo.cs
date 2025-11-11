@@ -1,24 +1,22 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
+using ProgramacaoAvancada.Models;
 
 namespace ProgramacaoAvancada.Models
 {
     public class Universo
     {
-        public List<Corpo> Corpos { get; private set; } = new List<Corpo>();
+        public List<Corpo> Corpos { get; private set; }
+        public double Largura { get; set; }
+        public double Altura { get; set; }
+        public double ConstanteGravitacional { get; set; }
+        public int ColisoesDetectadas { get; private set; }
 
-        private double canvasWidth;
-        private double canvasHeight;
-        private double fatorSimulacao;
-
-        public int ColisoesDetectadas { get; private set; } = 0;
-
-        public Universo(double canvasWidth, double canvasHeight, double fatorSimulacao = 1e5)
+        public Universo(double largura, double altura, double constanteGravitacional)
         {
-            this.canvasWidth = canvasWidth;
-            this.canvasHeight = canvasHeight;
-            this.fatorSimulacao = fatorSimulacao;
+            Corpos = new List<Corpo>();
+            Largura = largura;
+            Altura = altura;
+            ConstanteGravitacional = constanteGravitacional;
+            ColisoesDetectadas = 0;
         }
 
         public void AdicionarCorpo(Corpo corpo)
@@ -28,58 +26,70 @@ namespace ProgramacaoAvancada.Models
 
         public void Simular(double deltaTime)
         {
-            // Aplicar gravidade entre pares
+            // Aplicar gravidade entre todos os corpos
             for (int i = 0; i < Corpos.Count; i++)
             {
                 for (int j = i + 1; j < Corpos.Count; j++)
                 {
-                    Corpos[i].AplicarGravidade(Corpos[j], fatorSimulacao, deltaTime);
+                    Corpos[i].AplicarGravidade(Corpos[j], ConstanteGravitacional, deltaTime);
                 }
             }
 
             // Atualizar posições
-            foreach (var c in Corpos)
+            for (int i = Corpos.Count - 1; i >= 0; i--)
             {
-                c.AtualizarPosicao(canvasWidth, canvasHeight);
+                Corpos[i].AtualizarPosicao(Largura, Altura);
             }
 
-            // Colisões
-            TratarColisoes();
+            // Detectar e processar colisões
+            DetectarColisoes();
         }
 
-        private void TratarColisoes()
+        // ✅ MÉTODO AUXILIAR: Calcular distância entre corpos
+        private double CalcularDistancia(Corpo a, Corpo b)
         {
-            var novos = new List<Corpo>();
-            var removidos = new HashSet<Corpo>();
+            double dx = b.PosX - a.PosX;
+            double dy = b.PosY - a.PosY;
+            return Math.Sqrt(dx * dx + dy * dy);
+        }
 
-            for (int i = 0; i < Corpos.Count; i++)
+        private void DetectarColisoes()
+        {
+            var corposParaRemover = new List<Corpo>();
+            var corposFundidos = new List<Corpo>();
+
+            for (int i = Corpos.Count - 1; i >= 0; i--)
             {
-                var a = Corpos[i];
-                if (removidos.Contains(a)) continue;
-
-                for (int j = i + 1; j < Corpos.Count; j++)
+                for (int j = i - 1; j >= 0; j--)
                 {
-                    var b = Corpos[j];
-                    if (removidos.Contains(b)) continue;
-
-                    double dx = a.PosX - b.PosX;
-                    double dy = a.PosY - b.PosY;
-                    double dist = Math.Sqrt(dx * dx + dy * dy);
-
-                    if (dist <= a.Raio + b.Raio)
+                    if (i < Corpos.Count && j < Corpos.Count && i != j)
                     {
-                        var novo = Corpo.Fundir(a, b);
-                        novos.Add(novo);
-                        removidos.Add(a);
-                        removidos.Add(b);
-                        ColisoesDetectadas++;
-                        break;
+                        var corpoA = Corpos[i];
+                        var corpoB = Corpos[j];
+
+                        double distancia = CalcularDistancia(corpoA, corpoB);
+                        if (distancia < (corpoA.Raio + corpoB.Raio))
+                        {
+                            var corpoFundido = Corpo.Fundir(corpoA, corpoB);
+                            corposFundidos.Add(corpoFundido);
+                            corposParaRemover.Add(corpoA);
+                            corposParaRemover.Add(corpoB);
+                            ColisoesDetectadas++;
+                        }
                     }
                 }
             }
 
-            Corpos = Corpos.Except(removidos).ToList();
-            Corpos.AddRange(novos);
+            // Remove corpos colididos e adiciona os fundidos
+            foreach (var corpo in corposParaRemover)
+            {
+                Corpos.Remove(corpo);
+            }
+            
+            foreach (var corpo in corposFundidos)
+            {
+                Corpos.Add(corpo);
+            }
         }
     }
 }

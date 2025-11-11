@@ -1,6 +1,5 @@
-﻿using ProgramacaoAvancada.Models;
-using ProgramacaoAvancada.Interface;
-using ProgramacaoAvancada.Arquivos;
+using ProgramacaoAvancada.Models;
+using ProgramacaoAvancada.Services;
 using Microsoft.JSInterop;
 
 namespace ProgramacaoAvancada.Services
@@ -8,7 +7,7 @@ namespace ProgramacaoAvancada.Services
     public class SimuladorService
     {
         private Universo universo;
-        private readonly IArquivo<Corpo> gerenciadorArquivo;
+        private readonly ApiService _apiService;
         private int _ultimaQuantidadeCorpos = 0;
         private int _colisoesNaUltimaIteracao = 0;
 
@@ -24,15 +23,127 @@ namespace ProgramacaoAvancada.Services
 
         public List<string> Eventos { get; } = new();
 
-        private readonly string caminhoArquivo = "estado_simulacao.txt";
-
-        // Em SimuladorService.cs
-        public SimuladorService()
+        // ✅ CONSTRUTOR SIMPLIFICADO - Sem arquivos
+        public SimuladorService(ApiService apiService)
         {
-            gerenciadorArquivo = new Arquivo();  // ← Cria diretamente
+            _apiService = apiService;
             universo = new Universo(CanvasWidth, CanvasHeight, 1e10 * Gravidade);
             Resetar();
         }
+
+        // ========== MÉTODOS DE BANCO DE DADOS ==========
+
+        public async Task<bool> SalvarNoBancoAsync(string nomeSimulacao)
+        {
+            try
+            {
+                var request = new SimulacaoSalvarRequest
+                {
+                    Nome = nomeSimulacao,
+                    Corpos = Corpos,
+                    Iteracoes = Iteracoes,
+                    Colisoes = Colisoes,
+                    Gravidade = Gravidade
+                };
+
+                bool sucesso = await _apiService.SalvarSimulacaoAsync(request);
+                
+                if (sucesso)
+                {
+                    AdicionarEvento($"💾 SIMULAÇÃO SALVA NO BANCO: '{nomeSimulacao}'");
+                    AdicionarEvento($"📊 Backup realizado: {Corpos.Count} corpos, {Iteracoes} iterações, {Colisoes} colisões");
+                }
+                else
+                {
+                    AdicionarEvento("❌ Falha ao salvar no banco de dados");
+                }
+
+                return sucesso;
+            }
+            catch (Exception ex)
+            {
+                AdicionarEvento($"❌ ERRO Banco de Dados: {ex.Message}");
+                return false;
+            }
+        }
+
+        public async Task<bool> CarregarDoBancoAsync(int id)
+        {
+            try
+            {
+                var simulacao = await _apiService.CarregarSimulacaoAsync(id);
+                if (simulacao?.Corpos?.Count > 0)
+                {
+                    universo = new Universo(CanvasWidth, CanvasHeight, 1e10 * Gravidade);
+                    Corpos.Clear();
+                    
+                    foreach (var corpo in simulacao.Corpos)
+                    {
+                        universo.AdicionarCorpo(corpo);
+                    }
+
+                    Iteracoes = simulacao.Iteracoes;
+                    Colisoes = simulacao.Colisoes;
+                    Gravidade = simulacao.Gravidade;
+                    _ultimaQuantidadeCorpos = simulacao.Corpos.Count;
+                    Rodando = false;
+
+                    AdicionarEvento($"📂 SIMULAÇÃO CARREGADA: '{simulacao.Nome}'");
+                    AdicionarEvento($"🔄 Sistema restaurado: {simulacao.Corpos.Count} corpos, {simulacao.Iteracoes} iterações");
+
+                    return true;
+                }
+                else
+                {
+                    AdicionarEvento("❌ Simulação não encontrada ou inválida");
+                    return false;
+                }
+            }
+            catch (Exception ex)
+            {
+                AdicionarEvento($"❌ ERRO ao carregar: {ex.Message}");
+                return false;
+            }
+        }
+
+        public async Task<List<SimulacaoSnapshot>> ListarSimulacoesSalvasAsync()
+        {
+            try
+            {
+                return await _apiService.GetSimulacoesAsync();
+            }
+            catch (Exception ex)
+            {
+                AdicionarEvento($"❌ Erro ao carregar lista: {ex.Message}");
+                return new List<SimulacaoSnapshot>();
+            }
+        }
+
+        public async Task<bool> DeletarSimulacaoAsync(int id, string nomeSimulacao = "")
+        {
+            try
+            {
+                bool sucesso = await _apiService.DeletarSimulacaoAsync(id);
+                
+                if (sucesso)
+                {
+                    AdicionarEvento($"🗑️ Simulação excluída: '{nomeSimulacao}' (ID: {id})");
+                }
+                else
+                {
+                    AdicionarEvento($"❌ Falha ao excluir simulação ID: {id}");
+                }
+
+                return sucesso;
+            }
+            catch (Exception ex)
+            {
+                AdicionarEvento($"❌ Erro ao deletar: {ex.Message}");
+                return false;
+            }
+        }
+
+        // ========== MÉTODOS DA SIMULAÇÃO ==========
 
         public void Resetar()
         {
@@ -50,7 +161,6 @@ namespace ProgramacaoAvancada.Services
             _colisoesNaUltimaIteracao = 0;
             Eventos.Clear();
 
-            // ✅ EVENTO: Simulação reiniciada
             AdicionarEvento($"🌌 Universo criado com {NumCorpos} corpos celestes");
             AdicionarEvento($"⚡ Configuração: Gravidade = {Gravidade}, Canvas = {CanvasWidth}x{CanvasHeight}");
         }
@@ -63,19 +173,13 @@ namespace ProgramacaoAvancada.Services
             }
 
             Rodando = true;
-
-            // ✅ EVENTO: Simulação iniciada
             AdicionarEvento($"🚀 SIMULAÇÃO INICIADA - {NumCorpos} corpos em movimento");
-            AdicionarEvento($"⏱️ Iteração {Iteracoes} - Sistema estabilizando...");
         }
 
         public void Parar()
         {
             Rodando = false;
-
-            // ✅ EVENTO: Simulação pausada com estatísticas
-            AdicionarEvento($"⏸️ SIMULAÇÃO PAUSADA - {Iteracoes} iterações realizadas");
-            AdicionarEvento($"📊 Estatísticas: {Colisoes} colisões, {Corpos.Count} corpos restantes");
+            AdicionarEvento($"⏸️ SIMULAÇÃO PAUSADA - {Iteracoes} iterações, {Colisoes} colisões");
         }
 
         public void Atualizar(double deltaTime)
@@ -89,13 +193,13 @@ namespace ProgramacaoAvancada.Services
             Iteracoes++;
             Colisoes = universo.ColisoesDetectadas;
 
-            // ✅ EVENTOS DURANTE A SIMULAÇÃO
+            // Eventos especiais durante a simulação
             VerificarEventosEspeciais(corposAntes, corposAgora);
         }
 
         private void VerificarEventosEspeciais(int corposAntes, int corposAgora)
         {
-            // ✅ EVENTO: Colisão detectada
+            // Colisão detectada
             if (Colisoes > _colisoesNaUltimaIteracao)
             {
                 int novasColisoes = Colisoes - _colisoesNaUltimaIteracao;
@@ -103,156 +207,39 @@ namespace ProgramacaoAvancada.Services
                 _colisoesNaUltimaIteracao = Colisoes;
             }
 
-            // ✅ EVENTO: Redução significativa de corpos
+            // Redução significativa de corpos
             if (corposAgora < corposAntes)
             {
                 int corposFundidos = corposAntes - corposAgora;
                 AdicionarEvento($"🔄 Sistema consolidado: {corposFundidos} corpos fundidos → {corposAgora} restantes");
             }
 
-            // ✅ EVENTO: Milestones de iterações
+            // Milestones de iterações
             if (Iteracoes % 100 == 0)
             {
                 AdicionarEvento($"🎯 Milestone: {Iteracoes} iterações completadas");
-                AdicionarEvento($"📈 Sistema ativo: {corposAgora} corpos, {Colisoes} colisões totais");
             }
 
-            // ✅ EVENTO: Sistema estabilizando (poucas colisões)
-            if (Iteracoes > 50 && Colisoes == _colisoesNaUltimaIteracao && Iteracoes % 50 == 0)
-            {
-                AdicionarEvento($"⚖️ Sistema estabilizado - órbitas consistentes");
-            }
-
-            // ✅ EVENTO: Últimos corpos
+            // Últimos corpos
             if (corposAgora <= 3 && corposAgora < _ultimaQuantidadeCorpos)
             {
                 AdicionarEvento($"🌟 FASE FINAL: Apenas {corposAgora} corpo(s) restante(s) no sistema");
                 _ultimaQuantidadeCorpos = corposAgora;
             }
-
-            // ✅ EVENTO: Corpo dominante
-            if (corposAgora > 0)
-            {
-                var maiorCorpo = Corpos.OrderByDescending(c => c.Massa).First();
-                if (maiorCorpo.Massa > 50 && Iteracoes % 200 == 0)
-                {
-                    AdicionarEvento($"🪐 Corpo dominante: {maiorCorpo.Nome} (Massa: {maiorCorpo.Massa:F1})");
-                }
-            }
         }
+
+        // ========== MÉTODOS AUXILIARES ==========
 
         public void AdicionarEvento(string msg)
         {
             var hora = DateTime.Now.ToString("HH:mm:ss");
             Eventos.Insert(0, $"[{hora}] {msg}");
 
-            // Manter apenas os últimos 25 eventos (aumentado para mais histórico)
+            // Manter apenas os últimos 25 eventos
             if (Eventos.Count > 25)
                 Eventos.RemoveAt(Eventos.Count - 1);
         }
 
-        // ✅ MÉTODO CORRIGIDO: Compatível com a interface IArquivo
-        public async Task SalvarEmTxtAsync(IJSRuntime js)
-        {
-            try
-            {
-                if (gerenciadorArquivo is Arquivo arquivoConcreto)
-                {
-                    string conteudo = arquivoConcreto.GerarConteudoArquivo(
-                        Corpos,
-                        $"Simulação Gravidade 2D - Iterações: {Iteracoes}",
-                        Iteracoes,
-                        0.016
-                    );
-                    await js.InvokeVoidAsync("baixarArquivo", "estado_simulacao.txt", conteudo);
-
-                    // ✅ EVENTO: Salvamento com estatísticas
-                    AdicionarEvento($"💾 ESTADO SALVO - {Corpos.Count} corpos, {Iteracoes} iterações");
-                    AdicionarEvento($"📁 Arquivo: estado_simulacao.txt ({conteudo.Length} bytes)");
-                }
-                else
-                {
-                    gerenciadorArquivo.Salvar(caminhoArquivo, Corpos, Iteracoes, 0.016);
-                    AdicionarEvento("💾 Arquivo TXT salvo no servidor.");
-                }
-            }
-            catch (Exception ex)
-            {
-                AdicionarEvento($"❌ ERRO ao salvar: {ex.Message}");
-            }
-        }
-
-        // ✅ NOVO MÉTODO: Para uso direto na página Blazor
-        public string GerarConteudoArquivo(List<Corpo> corpos, int iteracoes, double deltaTime)
-        {
-            if (gerenciadorArquivo is Arquivo arquivoConcreto)
-            {
-                return arquivoConcreto.GerarConteudoArquivo(
-                    corpos,
-                    $"Simulação Gravidade 2D - Iterações: {iteracoes}",
-                    iteracoes,
-                    deltaTime
-                );
-            }
-            else
-            {
-                var sb = new System.Text.StringBuilder();
-                sb.AppendLine($"{corpos.Count};{iteracoes};{deltaTime}");
-                foreach (var c in corpos)
-                {
-                    sb.AppendLine($"{c.Nome};{c.Massa};{c.Raio};{c.PosX};{c.PosY};{c.VelX};{c.VelY}");
-                }
-                return sb.ToString();
-            }
-        }
-
-        public void CarregarDeTxt(string conteudo)
-        {
-            try
-            {
-                if (gerenciadorArquivo is Arquivo arquivoConcreto)
-                {
-                    var (lista, iter, tempo) = arquivoConcreto.CarregarDeConteudo(conteudo);
-                    if (lista.Count > 0)
-                    {
-                        universo = new Universo(CanvasWidth, CanvasHeight, 1e10 * Gravidade);
-                        foreach (var c in lista)
-                            universo.AdicionarCorpo(c);
-
-                        Iteracoes = iter;
-                        Colisoes = 0;
-                        _ultimaQuantidadeCorpos = lista.Count;
-
-                        // ✅ EVENTO: Carregamento bem-sucedido
-                        AdicionarEvento($"📂 UNIVERSO CARREGADO - {lista.Count} corpos, {iter} iterações anteriores");
-                        AdicionarEvento($"🔄 Sistema restaurado - pronto para continuar");
-                    }
-                    else
-                    {
-                        AdicionarEvento("❌ Arquivo inválido ou vazio.");
-                    }
-                }
-                else
-                {
-                    var (lista, iter, tempo) = gerenciadorArquivo.Carregar(caminhoArquivo);
-                    if (lista.Count > 0)
-                    {
-                        universo = new Universo(CanvasWidth, CanvasHeight, 1e10 * Gravidade);
-                        foreach (var c in lista)
-                            universo.AdicionarCorpo(c);
-
-                        Iteracoes = iter;
-                        AdicionarEvento($"📂 Arquivo carregado com {lista.Count} corpos (modo servidor).");
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                AdicionarEvento($"❌ ERRO ao carregar arquivo: {ex.Message}");
-            }
-        }
-
-        // ✅ NOVO MÉTODO: Para eventos manuais (pode ser chamado da UI)
         public void AdicionarEventoManual(string tipo, string descricao)
         {
             var emojis = new Dictionary<string, string>
@@ -262,11 +249,36 @@ namespace ProgramacaoAvancada.Services
                 ["erro"] = "❌",
                 ["sucesso"] = "✅",
                 ["dica"] = "💡",
-                ["config"] = "⚙️"
+                ["config"] = "⚙️",
+                ["banco"] = "💾"
             };
 
             string emoji = emojis.ContainsKey(tipo) ? emojis[tipo] : "📝";
             AdicionarEvento($"{emoji} {descricao}");
+        }
+
+        public string ObterEstatisticas()
+        {
+            return $"Corpos: {Corpos.Count} | Iterações: {Iteracoes} | Colisões: {Colisoes} | Gravidade: {Gravidade}";
+        }
+
+        public void LimparEventos()
+        {
+            Eventos.Clear();
+            AdicionarEvento("📝 Log de eventos limpo");
+        }
+
+        // ✅ MÉTODO PARA EXPORTAR DADOS (opcional, se precisar para outros usos)
+        public SimulacaoSalvarRequest ObterDadosSimulacao(string nome = "")
+        {
+            return new SimulacaoSalvarRequest
+            {
+                Nome = string.IsNullOrEmpty(nome) ? $"Simulação_{DateTime.Now:yyyyMMdd_HHmmss}" : nome,
+                Corpos = Corpos,
+                Iteracoes = Iteracoes,
+                Colisoes = Colisoes,
+                Gravidade = Gravidade
+            };
         }
     }
 }

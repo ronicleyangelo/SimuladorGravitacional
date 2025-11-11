@@ -1,7 +1,9 @@
-﻿namespace ProgramacaoAvancada.Models
+namespace ProgramacaoAvancada.Models
 {
     public class Corpo
     {
+
+        public int Id { get; set; } 
         private static int _contador = 0;
         private static readonly Random _rnd = new();
 

@@ -1,12 +1,10 @@
-﻿using System.Collections.Generic;
 using ProgramacaoAvancada.Models;
-using ProgramacaoAvancada.Interface;
 
 namespace ProgramacaoAvancada.Interface
 {
     public interface IArquivo<T>
     {
-        void Salvar(string caminho, List<T> lista, int iteracoes, double tempoEntreIteracoes);
-        (List<T> lista, int iteracoes, double tempoEntreIteracoes) Carregar(string caminho);
+        string GerarConteudoArquivo(List<T> objetos, string cabecalho = "", int iteracoes = 0, double deltaTime = 0.016);
+        (List<T> objetos, int iteracoes, double deltaTime) CarregarDeConteudo(string conteudo);
     }
 }
