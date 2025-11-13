@@ -8,10 +8,6 @@ builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
-// ✅ Entity Framework com SQL Server
-builder.Services.AddDbContext<AppDbContext>(options =>
-    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
-
 // ✅ CORS para permitir requests do Blazor
 builder.Services.AddCors(options =>
 {
@@ -23,12 +19,8 @@ builder.Services.AddCors(options =>
     });
 });
 
-// ✅ CONFIGURAÇÃO JSON (CORRIGIDA)
-builder.Services.ConfigureHttpJsonOptions(options =>
-{
-    options.SerializerOptions.NumberHandling = System.Text.Json.Serialization.JsonNumberHandling.AllowNamedFloatingPointLiterals;
-});
-
+builder.Services.AddDbContext<AppDbContext>(options =>
+    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.

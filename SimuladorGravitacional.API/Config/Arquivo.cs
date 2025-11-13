@@ -1,29 +1,44 @@
 ﻿using ProgramacaoAvancada.Models;
-using ProgramacaoAvancada.Interface;
+using ProgramacaoAvancada.DTOs;
 using System.Globalization;
 using System.Text;
 
 namespace ProgramacaoAvancada.Arquivos
 {
-    public class Arquivo : IArquivo<Corpo>
+    public class Arquivo
     {
         private readonly CultureInfo _cultura = CultureInfo.InvariantCulture;
 
-        public void Salvar(string caminho, List<Corpo> lista, int iteracoes, double tempoEntreIteracoes)
+        // Método para salvar uma simulação completa
+        public void SalvarSimulacao(string caminho, SimulacaoDto simulacao)
         {
             var sb = new StringBuilder();
-            sb.AppendLine($"{lista.Count};{iteracoes};{tempoEntreIteracoes.ToString(_cultura)}");
+            
+            // Cabeçalho com informações da simulação
+            sb.AppendLine($"# Simulação: {simulacao.Nome}");
+            sb.AppendLine($"# Data: {simulacao.DataCriacao:yyyy-MM-dd HH:mm:ss}");
+            sb.AppendLine($"# Iterações: {simulacao.NumeroIteracoes}");
+            sb.AppendLine($"# Colisões: {simulacao.NumeroColisoes}");
+            sb.AppendLine($"# Corpos: {simulacao.QuantidadeCorpos}");
+            sb.AppendLine($"# Universo: {simulacao.Universo.Nome}");
+            sb.AppendLine($"# Dimensões: {simulacao.Universo.CanvasWidth}x{simulacao.Universo.CanvasHeight}");
+            sb.AppendLine($"# Fator Simulação: {simulacao.Universo.FatorSimulacao}");
 
-            foreach (var c in lista)
+            // Dados dos corpos
+            sb.AppendLine("NOME;MASSA;DENSIDADE;RAIO;POSX;POSY;VelocidadeX;VelocidadeY;COR");
+
+            foreach (var corpo in simulacao.Universo.Corpos)
             {
                 sb.AppendLine(string.Join(";",
-                    c.Nome,
-                    c.Massa.ToString(_cultura),
-                    c.Raio.ToString(_cultura),
-                    c.PosX.ToString(_cultura),
-                    c.PosY.ToString(_cultura),
-                    c.VelX.ToString(_cultura),
-                    c.VelY.ToString(_cultura)
+                    corpo.Nome,
+                    corpo.Massa.ToString(_cultura),
+                    corpo.Densidade.ToString(_cultura),
+                    corpo.Raio.ToString(_cultura),
+                    corpo.PosicaoX.ToString(_cultura),
+                    corpo.PosicaoY.ToString(_cultura),
+                    corpo.VelocidadeX.ToString(_cultura),
+                    corpo.VelocidadeY.ToString(_cultura),
+                    corpo.Cor
                 ));
             }
 
@@ -34,138 +49,148 @@ namespace ProgramacaoAvancada.Arquivos
             File.WriteAllText(caminho, sb.ToString());
         }
 
-        public (List<Corpo> lista, int iteracoes, double tempoEntreIteracoes) Carregar(string caminho)
+        // Método para carregar uma simulação do arquivo
+        public SimulacaoDto CarregarSimulacao(string caminho)
         {
-            var lista = new List<Corpo>();
-            int iteracoes = 0;
-            double tempo = 0.016;
-
-            if (!File.Exists(caminho)) return (lista, iteracoes, tempo);
+            if (!File.Exists(caminho))
+                throw new FileNotFoundException("Arquivo não encontrado");
 
             var linhas = File.ReadAllLines(caminho);
+            var corpos = new List<CorpoDto>();
+            var simulacaoInfo = new Dictionary<string, string>();
 
-            if (linhas.Length == 0) return (lista, iteracoes, tempo);
-
-            var header = linhas[0].Split(';');
-            if (header.Length == 3)
+            foreach (var linha in linhas)
             {
-                int.TryParse(header[1], out iteracoes);
-                double.TryParse(header[2], NumberStyles.Any, _cultura, out tempo);
-            }
+                if (string.IsNullOrWhiteSpace(linha)) continue;
 
-            for (int i = 1; i < linhas.Length; i++)
-            {
-                var partes = linhas[i].Split(';');
-                if (partes.Length < 7) continue;
-
-                try
+                // Linhas de comentário/metadados
+                if (linha.StartsWith("#"))
                 {
-                    var nome = partes[0];
-                    var massa = double.Parse(partes[1], _cultura);
-                    var raio = double.Parse(partes[2], _cultura);
-                    var posX = double.Parse(partes[3], _cultura);
-                    var posY = double.Parse(partes[4], _cultura);
-                    var velX = double.Parse(partes[5], _cultura);
-                    var velY = double.Parse(partes[6], _cultura);
-
-                    var densidade = massa / ((4.0 / 3.0) * Math.PI * Math.Pow(raio, 3));
-
-                    var corpo = new Corpo(nome, massa, densidade, posX, posY, "rgb(255,255,255)")
+                    var partesMeta = linha.Substring(1).Split(':');
+                    if (partesMeta.Length >= 2)
                     {
-                        VelX = velX,
-                        VelY = velY
-                    };
-
-                    lista.Add(corpo);
-                }
-                catch
-                {
+                        simulacaoInfo[partesMeta[0].Trim()] = partesMeta[1].Trim();
+                    }
                     continue;
                 }
-            }
 
-            return (lista, iteracoes, tempo);
+                // Pular cabeçalho dos dados
+                if (linha.StartsWith("NOME;")) continue;
+
+                // Processar dados dos corpos
+                var partes = linha.Split(';');
+                if (partes.Length >= 9)
+                {
+                    try
+                    {
+                        var corpo = new CorpoDto
+                        {
+                            Nome = partes[0],
+                            Massa = double.Parse(partes[1], _cultura),
+                            Densidade = double.Parse(partes[2], _cultura),
+                            Raio = double.Parse(partes[3], _cultura),
+                            PosicaoX = double.Parse(partes[4], _cultura),
+                            PosicaoY = double.Parse(partes[5], _cultura),
+                            VelocidadeX = double.Parse(partes[6], _cultura),
+                            VelocidadeY = double.Parse(partes[7], _cultura),
+                            Cor = partes[8]
+                        };
+                        corpos.Add(corpo);
+                    }
+                    catch (Exception ex)
+                    {
+                        throw new FormatException($"Erro ao processar linha: {linha}", ex);
+                    }
+                }
+            }
+            // Criar DTO da simulação
+            return new SimulacaoDto
+            {
+                Nome = simulacaoInfo.GetValueOrDefault("Simulação", "Simulação Carregada"),
+                DataCriacao = DateTime.TryParse(simulacaoInfo.GetValueOrDefault("Data"), out var data) 
+                    ? data : DateTime.UtcNow,
+                NumeroIteracoes = int.TryParse(simulacaoInfo.GetValueOrDefault("Iterações"), out var iteracoes) 
+                    ? iteracoes : 0,
+                NumeroColisoes = int.TryParse(simulacaoInfo.GetValueOrDefault("Colisões"), out var colisoes) 
+                    ? colisoes : 0,
+                QuantidadeCorpos = corpos.Count,
+                Universo = new UniversoDto
+                {
+                    Nome = simulacaoInfo.GetValueOrDefault("Universo", "Universo Carregado"),
+                    CanvasWidth = double.TryParse(simulacaoInfo.GetValueOrDefault("Dimensões")?.Split('x')[0], out var width) 
+                        ? width : 800,
+                    CanvasHeight = double.TryParse(simulacaoInfo.GetValueOrDefault("Dimensões")?.Split('x')[1], out var height) 
+                        ? height : 600,
+                    FatorSimulacao = double.TryParse(simulacaoInfo.GetValueOrDefault("Fator Simulação"), out var fator) 
+                        ? fator : 1e5,
+                    Corpos = corpos
+                }
+            };
         }
 
-        // ✅ (Opcional) Método adicional para gerar conteúdo em string
-        // Método melhorado
-        // ✅ CORREÇÃO: Método com ordem de parâmetros correta
-        public string GerarConteudoArquivo(List<Corpo> lista, string cabecalho, int iteracoes, double tempoEntreIteracoes)
+        // Método para exportar apenas os corpos (formato simples)
+        public string ExportarCorpos(List<CorpoDto> corpos)
         {
             var sb = new StringBuilder();
+            sb.AppendLine("NOME;MASSA;DENSIDADE;RAIO;POSX;POSY;VelocidadeX;VelocidadeY;COR");
 
-            // Adiciona cabeçalho personalizado se fornecido
-            if (!string.IsNullOrEmpty(cabecalho))
-            {
-                sb.AppendLine($"# {cabecalho}");
-            }
-
-            sb.AppendLine($"{lista.Count};{iteracoes};{tempoEntreIteracoes.ToString(_cultura)}");
-
-            foreach (var c in lista)
+            foreach (var corpo in corpos)
             {
                 sb.AppendLine(string.Join(";",
-                    c.Nome,
-                    c.Massa.ToString(_cultura),
-                    c.Raio.ToString(_cultura),
-                    c.PosX.ToString(_cultura),
-                    c.PosY.ToString(_cultura),
-                    c.VelX.ToString(_cultura),
-                    c.VelY.ToString(_cultura)
+                    corpo.Nome,
+                    corpo.Massa.ToString(_cultura),
+                    corpo.Densidade.ToString(_cultura),
+                    corpo.Raio.ToString(_cultura),
+                    corpo.PosicaoX.ToString(_cultura),
+                    corpo.PosicaoY.ToString(_cultura),
+                    corpo.VelocidadeX.ToString(_cultura),
+                    corpo.VelocidadeY.ToString(_cultura),
+                    corpo.Cor
                 ));
             }
 
             return sb.ToString();
         }
-        public (List<Corpo>, int, double) CarregarDeConteudo(string conteudo)
-        {
-            var lista = new List<Corpo>();
-            int iteracoes = 0;
-            double tempo = 0.016;
 
+        // Método para importar corpos do formato simples
+        public List<CorpoDto> ImportarCorpos(string conteudo)
+        {
+            var corpos = new List<CorpoDto>();
             var linhas = conteudo.Split('\n');
 
-            if (linhas.Length == 0) return (lista, iteracoes, tempo);
-
-            var header = linhas[0].Trim().Split(';');
-            if (header.Length == 3)
+            foreach (var linha in linhas)
             {
-                int.TryParse(header[1], out iteracoes);
-                double.TryParse(header[2], NumberStyles.Any, _cultura, out tempo);
-            }
-
-            for (int i = 1; i < linhas.Length; i++)
-            {
-                var partes = linhas[i].Trim().Split(';');
-                if (partes.Length < 7) continue;
-
-                try
-                {
-                    var nome = partes[0];
-                    var massa = double.Parse(partes[1], _cultura);
-                    var raio = double.Parse(partes[2], _cultura);
-                    var posX = double.Parse(partes[3], _cultura);
-                    var posY = double.Parse(partes[4], _cultura);
-                    var velX = double.Parse(partes[5], _cultura);
-                    var velY = double.Parse(partes[6], _cultura);
-
-                    var densidade = massa / ((4.0 / 3.0) * Math.PI * Math.Pow(raio, 3));
-
-                    var corpo = new Corpo(nome, massa, densidade, posX, posY, "rgb(255,255,255)")
-                    {
-                        VelX = velX,
-                        VelY = velY
-                    };
-
-                    lista.Add(corpo);
-                }
-                catch
-                {
+                if (string.IsNullOrWhiteSpace(linha) || linha.StartsWith("NOME;"))
                     continue;
+
+                var partes = linha.Split(';');
+                if (partes.Length >= 9)
+                {
+                    try
+                    {
+                        var corpo = new CorpoDto
+                        {
+                            Nome = partes[0],
+                            Massa = double.Parse(partes[1], _cultura),
+                            Densidade = double.Parse(partes[2], _cultura),
+                            Raio = double.Parse(partes[3], _cultura),
+                            PosicaoX = double.Parse(partes[4], _cultura),
+                            PosicaoY = double.Parse(partes[5], _cultura),
+                            VelocidadeX = double.Parse(partes[6], _cultura),
+                            VelocidadeY = double.Parse(partes[7], _cultura),
+                            Cor = partes[8]
+                        };
+                        corpos.Add(corpo);
+                    }
+                    catch
+                    {
+                        // Ignora linhas com erro
+                        continue;
+                    }
                 }
             }
 
-            return (lista, iteracoes, tempo);
+            return corpos;
         }
     }
 }
