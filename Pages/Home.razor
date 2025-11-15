@@ -78,6 +78,7 @@
                     </small>
                 </div>
 
+                <!-- Grupo de botões principais -->
                 <div class="button-group">
                     <button @onclick="Iniciar" disabled="@Simulacao.Rodando" class="btn btn-start">
                         <span>▶️</span> Iniciar
@@ -89,18 +90,90 @@
                         <span>🔄</span> Resetar
                     </button>
                     <button @onclick="Salvar" class="btn btn-save">
-                        <span>💾</span> Salvar Arquivo
+                        <span>💾</span> Salvar TXT
                     </button>
                     <label class="btn btn-load">
-                        <span>📂</span> Carregar Arquivo
+                        <span>📂</span> Carregar TXT
                         <InputFile OnChange="OnFileUpload" accept=".txt" hidden />
                     </label>
+                </div>
+
+                <!-- Grupo de botões do banco de dados -->
+                <div class="button-group database-buttons">
+                    <button @onclick="SalvarNoBanco" class="btn btn-db-save">
+                        <span>💾</span> Salvar no Banco
+                    </button>
+                    <button @onclick="ToggleGerenciarUniversos" class="btn btn-db-manage">
+                        <span>🌌</span> Gerenciar Universos
+                    </button>
                 </div>
             </div>
 
             @if (!string.IsNullOrEmpty(mensagem))
             {
                 <div class="mensagem">@mensagem</div>
+            }
+
+            <!-- Modal para gerenciar universos -->
+            @if (mostrarGerenciador)
+            {
+                <div class="modal-overlay" @onclick="ToggleGerenciarUniversos">
+                    <div class="modal-content" @onclick:stopPropagation>
+                        <div class="modal-header">
+                            <h3>🌌 Gerenciar Universos Salvos</h3>
+                            <button @onclick="ToggleGerenciarUniversos" class="btn-close">×</button>
+                        </div>
+                        <div class="modal-body">
+                            <div class="modal-controls">
+                                <button @onclick="CarregarListaUniversos" class="btn btn-refresh">
+                                    <span>🔄</span> Atualizar Lista
+                                </button>
+                                <button @onclick="CriarNovoUniverso" class="btn btn-new-universe">
+                                    <span>🌟</span> Novo Universo
+                                </button>
+                            </div>
+
+                            @if (universosSalvos.Any())
+                            {
+                                <div class="universos-list">
+                                    @foreach (var universo in universosSalvos)
+                                    {
+                                        <div class="universo-item">
+                                            <div class="universo-info">
+                                                <strong>@universo.Nome</strong>
+                                                <small>Corpos: @universo.CorposNavigation.Count | 
+                                                       Criado: @universo.DataCriacao.ToString("dd/MM HH:mm")</small>
+                                            </div>
+                                            <div class="universo-actions">
+                                                <button @onclick="() => CarregarUniverso(universo.Id)" 
+                                                        class="btn btn-sm btn-load-universe">
+                                                    🚀 Carregar
+                                                </button>
+                                                <button @onclick="() => AtualizarUniverso(universo.Id)" 
+                                                        class="btn btn-sm btn-update-universe">
+                                                    ✏️ Atualizar
+                                                </button>
+                                                <button @onclick="() => DeletarUniverso(universo.Id)" 
+                                                        class="btn btn-sm btn-delete-universe">
+                                                    🗑️ Deletar
+                                                </button>
+                                            </div>
+                                        </div>
+                                    }
+                                </div>
+                            }
+                            else
+                            {
+                                <div class="no-universos">
+                                    <p>Nenhum universo salvo no banco de dados.</p>
+                                    <p style="font-size: 0.9rem; opacity: 0.7;">
+                                        Salve sua simulação atual clicando em "Salvar no Banco"
+                                    </p>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                </div>
             }
 
             <!-- Event-log ocupando o restante do espaço -->
@@ -131,6 +204,10 @@
     private System.Timers.Timer? loop;
     private string mensagem = string.Empty;
     private const double deltaTime = 0.016;
+    
+    // Variáveis para gerenciamento de banco de dados
+    private bool mostrarGerenciador = false;
+    private List<ProgramacaoAvancada.Models.Universo> universosSalvos = new();
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
@@ -181,12 +258,126 @@
         {
             string conteudo = Simulacao.GerarConteudoArquivo(Simulacao.Corpos, Simulacao.Iteracoes, deltaTime);
             await JS.InvokeVoidAsync("baixarArquivo", "estado_simulacao.txt", conteudo);
-            mensagem = "✅ Arquivo salvo com sucesso!";
+            mensagem = "✅ Arquivo TXT salvo com sucesso!";
             StateHasChanged();
         }
         catch (Exception ex)
         {
-            mensagem = $"❌ Erro ao salvar: {ex.Message}";
+            mensagem = $"❌ Erro ao salvar TXT: {ex.Message}";
+            StateHasChanged();
+        }
+    }
+
+    // ✅ NOVOS MÉTODOS PARA BANCO DE DADOS
+
+    private async Task SalvarNoBanco()
+    {
+        try
+        {
+            var id = await Simulacao.SalvarUniversoAtualAsync();
+            if (id > 0)
+            {
+                mensagem = $"✅ Universo salvo no banco (ID: {id})";
+                StateHasChanged();
+            }
+        }
+        catch (Exception ex)
+        {
+            mensagem = $"❌ Erro ao salvar no banco: {ex.Message}";
+            StateHasChanged();
+        }
+    }
+
+    private void ToggleGerenciarUniversos()
+    {
+        mostrarGerenciador = !mostrarGerenciador;
+        if (mostrarGerenciador)
+        {
+            _ = CarregarListaUniversos(); // Carrega a lista quando abre o modal
+        }
+        StateHasChanged();
+    }
+
+    private async Task CarregarListaUniversos()
+    {
+        try
+        {
+            universosSalvos = await Simulacao.ObterUniversosSalvosAsync();
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            mensagem = $"❌ Erro ao carregar lista: {ex.Message}";
+            StateHasChanged();
+        }
+    }
+
+    private async Task CarregarUniverso(int id)
+    {
+        try
+        {
+            if (await Simulacao.CarregarUniversoAsync(id))
+            {
+                mensagem = $"🌌 Universo #{id} carregado!";
+                mostrarGerenciador = false; // Fecha o modal após carregar
+                StateHasChanged();
+            }
+        }
+        catch (Exception ex)
+        {
+            mensagem = $"❌ Erro ao carregar universo: {ex.Message}";
+            StateHasChanged();
+        }
+    }
+
+    private async Task AtualizarUniverso(int id)
+    {
+        try
+        {
+            if (await Simulacao.AtualizarUniversoAtualAsync(id))
+            {
+                mensagem = $"✏️ Universo #{id} atualizado!";
+                await CarregarListaUniversos(); // Atualiza a lista
+                StateHasChanged();
+            }
+        }
+        catch (Exception ex)
+        {
+            mensagem = $"❌ Erro ao atualizar universo: {ex.Message}";
+            StateHasChanged();
+        }
+    }
+
+    private async Task DeletarUniverso(int id)
+    {
+        try
+        {
+            if (await Simulacao.DeletarUniversoAsync(id))
+            {
+                mensagem = $"🗑️ Universo #{id} deletado!";
+                await CarregarListaUniversos(); // Atualiza a lista
+                StateHasChanged();
+            }
+        }
+        catch (Exception ex)
+        {
+            mensagem = $"❌ Erro ao deletar universo: {ex.Message}";
+            StateHasChanged();
+        }
+    }
+
+    private async Task CriarNovoUniverso()
+    {
+        try
+        {
+            var novoUniverso = await Simulacao.CriarNovoUniversoNoBancoAsync("Novo Universo Aleatório", 10);
+            mensagem = $"🌟 Novo universo criado (ID: {novoUniverso.Id})";
+            await CarregarListaUniversos(); // Atualiza a lista
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            mensagem = $"❌ Erro ao criar universo: {ex.Message}";
             StateHasChanged();
         }
     }

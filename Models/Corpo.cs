@@ -1,19 +1,49 @@
-﻿namespace ProgramacaoAvancada.Models
+﻿using System;
+using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
+
+namespace ProgramacaoAvancada.Models
 {
     public class Corpo
     {
-        private static int _contador = 0;
-        private static readonly Random _rnd = new();
+        [Key]
+        public int Id { get; set; }
 
-        public string Nome { get; private set; }
-        public double Massa { get; private set; }
-        public double Densidade { get; private set; }
-        public double Raio { get; private set; }
-        public string Cor { get; set; }
+        [Required]
+        public string Nome { get; set; } = string.Empty; // ✅ ADICIONE VALOR PADRÃO
+
+        [Required]
+        public double Massa { get; set; }
+
+        [Required]
+        public double Densidade { get; set; }
+
+        [Required]
+        public double Raio { get; set; }
+
+        [Required]
+        public string Cor { get; set; } = "rgb(255,255,255)"; // ✅ ADICIONE VALOR PADRÃO
+
+        [Required]
         public double PosX { get; set; }
+
+        [Required]
         public double PosY { get; set; }
-        public double VelX { get; set; } = 0; // ✅ Velocidade inicial sempre zero
-        public double VelY { get; set; } = 0; // ✅ Velocidade inicial sempre zero
+
+        [Required]
+        public double VelX { get; set; } = 0;
+
+        [Required]
+        public double VelY { get; set; } = 0;
+
+        // ✅ CORRIGIR: Mudar de SimulacaoId para UniversoId
+        public int UniversoId { get; set; } // ✅ MUDAR AQUI
+
+        [ForeignKey("UniversoId")]
+        public Universo? Universo { get; set; }
+
+        // Construtor para Entity Framework
+        public Corpo() { }
 
         public Corpo(string nome, double massa, double densidade, double posX, double posY, string cor)
         {
@@ -28,6 +58,13 @@
             double volume = massa / densidade;
             Raio = Math.Pow((3.0 * volume) / (4.0 * Math.PI), 1.0 / 3.0);
         }
+
+        [NotMapped]
+        private static int _contador = 0;
+
+        [NotMapped]
+        private static readonly Random _rnd = new();
+
 
         public static Corpo CriarAleatorio(double canvasWidth, double canvasHeight)
         {
