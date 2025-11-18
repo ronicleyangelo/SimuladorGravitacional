@@ -1,42 +1,82 @@
 ﻿@page "/"
-@inject ProgramacaoAvancada.Services.SimuladorService Simulacao
+@using ProgramacaoAvancada.Models 
+@using ProgramacaoAvancada.Services
+@using ProgramacaoAvancada.DTOs
+@inject SimuladorService Simulacao
+@inject SimulacaoApiService ApiService
 @inject IJSRuntime JS
 @implements IDisposable
 
-<PageTitle>🌌 Simulador Gravitacional 2D</PageTitle>
+<PageTitle>🌌 Simulador Gravitacional 2D - SISTEMA REALISTA</PageTitle>
 
-<div class="sim-container @(Simulacao.Rodando ? "simulacao-ativa" : "")">
+<div class="sim-container @(Simulacao.Executando ? "simulacao-ativa" : "")">
     <!-- Área principal da simulação -->
     <div class="simulation-area">
         <div class="canvas-wrap">
             <svg @ref="svgElement" width="@Simulacao.CanvasWidth" height="@Simulacao.CanvasHeight"
                 style="background-color: transparent;">
-                @foreach (var corpo in Simulacao.Corpos)
-                {
-                    <circle cx="@corpo.PosX.ToString(System.Globalization.CultureInfo.InvariantCulture)"
-                        cy="@corpo.PosY.ToString(System.Globalization.CultureInfo.InvariantCulture)"
-                        r="@corpo.Raio.ToString(System.Globalization.CultureInfo.InvariantCulture)" fill="@corpo.Cor"
-                        opacity="0.9" filter="url(#glow)" />
-                }
-
-                <text x="10" y="20" fill="#a0a0ff" font-size="12px">
-                    Corpos: @Simulacao.Corpos.Count | Iterações: @Simulacao.Iteracoes | Colisões: @Simulacao.Colisoes
-                </text>
-
-                <!-- Efeito de glow para os corpos -->
+                
+                <!-- ✅ CORREÇÃO: Filtros para efeitos visuais realistas -->
                 <defs>
+                    <!-- Filtro de brilho para corpos normais -->
                     <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
-                        <feGaussianBlur stdDeviation="3" result="coloredBlur" />
+                        <feGaussianBlur stdDeviation="2" result="coloredBlur" />
                         <feMerge>
                             <feMergeNode in="coloredBlur" />
                             <feMergeNode in="SourceGraphic" />
                         </feMerge>
                     </filter>
+                    
+                    <!-- Filtro especial para corpos luminosos (estrelas, anãs branca) -->
+                    <filter id="star-glow" x="-100%" y="-100%" width="300%" height="300%">
+                        <feGaussianBlur stdDeviation="5" result="blur"/>
+                        <feMerge>
+                            <feMergeNode in="blur"/>
+                            <feMergeNode in="SourceGraphic"/>
+                        </feMerge>
+                    </filter>
                 </defs>
+
+                <!-- ✅ CORREÇÃO: Renderização com rotação e efeitos realistas -->
+                @foreach (var corpo in Simulacao.Corpos)
+                {
+                    <g @key="@($"{corpo.Nome}-{renderKey}")" 
+                       transform="rotate(@(corpo.AnguloRotacao * 180 / Math.PI) @corpo.PosX @corpo.PosY)">
+                        <circle
+                            cx="@corpo.PosX.ToString(System.Globalization.CultureInfo.InvariantCulture)"
+                            cy="@corpo.PosY.ToString(System.Globalization.CultureInfo.InvariantCulture)"
+                            r="@corpo.Raio.ToString(System.Globalization.CultureInfo.InvariantCulture)" 
+                            fill="@corpo.Cor"
+                            opacity="@corpo.Brilho" 
+                            filter="@(corpo.EhLuminoso ? "url(#star-glow)" : "url(#glow)")" />
+                            
+                        <!-- Indicador de rotação para corpos grandes -->
+                        @if (corpo.Raio > 8)
+                        {
+                            <line x1="@corpo.PosX" 
+                                  y1="@corpo.PosY" 
+                                  x2="@(corpo.PosX + corpo.Raio * 0.7)" 
+                                  y2="@corpo.PosY" 
+                                  stroke="white" 
+                                  stroke-width="1" 
+                                  opacity="0.6" />
+                        }
+                    </g>
+                }
+
+                <!-- Informações da simulação -->
+                <text x="10" y="20" fill="#a0a0ff" font-size="12px">
+                    Corpos: @Simulacao.Corpos.Count | Iterações: @Simulacao.Iteracoes | Colisões: @Simulacao.Colisoes
+                </text>
+                
+                <!-- Legenda de tipos -->
+                <text x="10" y="40" fill="#6ee7b7" font-size="11px">
+                    Sistema Realista: Asteroides • Cometas • Luas • Planetas • Gigantes • Estrelas
+                </text>
             </svg>
         </div>
 
-        <!-- Estatísticas em tempo real - VISÍVEIS EM TELA CHEIA -->
+        <!-- Estatísticas em tempo real -->
         <div class="stats-bar">
             <div class="stat-item">
                 <span class="stat-value">@Simulacao.Corpos.Count</span>
@@ -51,8 +91,8 @@
                 <span class="stat-label">Colisões</span>
             </div>
             <div class="stat-item">
-                <span class="stat-value status-indicator @(Simulacao.Rodando ? "status-ativa" : "status-pausada")">
-                    @(Simulacao.Rodando ? "● Ativa" : "● Pausada")
+                <span class="stat-value status-indicator @(Simulacao.Executando ? "status-ativa" : "status-pausada")">
+                    @(Simulacao.Executando ? "● Ativa" : "● Pausada")
                 </span>
                 <span class="stat-label">Status</span>
             </div>
@@ -62,45 +102,180 @@
     <!-- Painel lateral moderno -->
     <div class="side-panel">
         <div class="panel-header">
-            <h1>🌌 Simulador Gravitacional</h1>
-            <p>Controle a simulação em tempo real</p>
+            <h1>🌌 Simulador Gravitacional REALISTA</h1>
+            <p>Sistema astronômico com 8 tipos de corpos celestes</p>
         </div>
 
         <div class="controls-container">
             <!-- Controles na parte superior -->
             <div class="controls">
+                <!-- ✅ CORREÇÃO: Controle de quantidade SEM LIMITE -->
                 <div class="control-group">
                     <label for="numCorpos">🎯 Quantidade de Corpos</label>
-                    <input type="number" id="numCorpos" @bind="Simulacao.NumCorpos" @bind:event="oninput"
-                        min="1" max="50" class="num-input" />
+                    <input type="number" id="numCorpos" @bind="quantidadeCorposInput" @bind:event="oninput"
+                        min="1" class="num-input" />
                     <small style="color: #a0a0ff; font-size: 0.8rem;">
-                        @(Simulacao.Corpos.Count != Simulacao.NumCorpos ? "Clique em Iniciar para aplicar" : "Quantidade aplicada")
+                        @(quantidadeStatus)
                     </small>
                 </div>
 
+                <!-- ✅ NOVO: Controles para adicionar/remover corpos dinamicamente -->
+                <div class="button-group" style="margin-bottom: 15px;">
+                    <button @onclick="AdicionarMaisCorpos" class="btn btn-add" title="Adicionar mais corpos">
+                        <span>➕</span> Adicionar
+                    </button>
+                    <button @onclick="RemoverAlgunsCorpos" class="btn btn-remove" title="Remover alguns corpos">
+                        <span>➖</span> Remover
+                    </button>
+                    <button @onclick="LimparTodosCorpos" class="btn btn-clear" title="Limpar todos os corpos">
+                        <span>🧹</span> Limpar
+                    </button>
+                </div>
+
+                <!-- Controles de Simulação -->
                 <div class="button-group">
-                    <button @onclick="Iniciar" disabled="@Simulacao.Rodando" class="btn btn-start">
+                    <button @onclick="Iniciar" disabled="@Simulacao.Executando" class="btn btn-start">
                         <span>▶️</span> Iniciar
                     </button>
-                    <button @onclick="Parar" disabled="@(!Simulacao.Rodando)" class="btn btn-stop">
+                    <button @onclick="Parar" disabled="@(!Simulacao.Executando)" class="btn btn-stop">
                         <span>⏸️</span> Parar
                     </button>
                     <button @onclick="Resetar" class="btn btn-reset">
                         <span>🔄</span> Resetar
                     </button>
-                    <button @onclick="Salvar" class="btn btn-save">
-                        <span>💾</span> Salvar Arquivo
-                    </button>
-                    <label class="btn btn-load">
-                        <span>📂</span> Carregar Arquivo
-                        <InputFile OnChange="OnFileUpload" accept=".txt" hidden />
-                    </label>
+                </div>
+
+                <!-- ✅ CORREÇÃO: Configurações de Performance sem @onchange duplicado -->
+                <div class="control-group" style="margin-top: 15px;">
+                    <label for="usarParalelismo">⚡ Computação Paralela</label>
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <!-- ✅ CORREÇÃO: Usar apenas @bind com event -->
+                        <input type="checkbox" id="usarParalelismo" 
+                               @bind="usarParalelismoLocal" 
+                               @bind:event="onchange" />
+                        <span style="color: #a0a0ff; font-size: 0.8rem;">
+                            @(usarParalelismoLocal ? "Ativado" : "Desativado")
+                        </span>
+                    </div>
+                </div>
+
+                <!-- ✨ SEÇÃO MELHORADA: Banco de Dados -->
+                <div class="db-section">
+                    <h4 style="margin: 0 0 15px 0; color: #6ee7b7; font-size: 1rem; display: flex; align-items: center; gap: 8px;">
+                        <span>💾</span> Banco de Dados
+                    </h4>
+                    
+                    <!-- Salvar no Banco -->
+                    <div class="db-save-group" style="margin-bottom: 15px;">
+                        <div style="display: flex; gap: 8px;">
+                            <input type="text" @bind="nomeSimulacao" placeholder="Nome da simulação..." 
+                                   class="db-input" @bind:event="oninput" 
+                                   style="flex: 1; padding: 8px 12px; border: 1px solid rgba(110, 231, 183, 0.3); 
+                                          background: rgba(17, 24, 39, 0.8); color: white; border-radius: 6px;" />
+                            <button @onclick="SalvarNoBanco" disabled="@salvandoBanco" class="btn btn-db-save"
+                                    style="padding: 8px 16px; white-space: nowrap;">
+                                @if (salvandoBanco)
+                                {
+                                    <span>⏳ Salvando...</span>
+                                }
+                                else
+                                {
+                                    <span>💾 Salvar</span>
+                                }
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Carregar do Banco -->
+                    <div class="db-load-section">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                            <h5 style="margin: 0; color: #a0a0ff; font-size: 0.9rem;">Carregar Simulação</h5>
+                            <button @onclick="AtualizarLista" class="btn btn-db-refresh" 
+                                    style="padding: 4px 8px; font-size: 0.8rem;" title="Atualizar lista">
+                                <span>🔄</span>
+                            </button>
+                        </div>
+
+                        @if (simulacoesSalvas == null)
+                        {
+                            <div style="text-align: center; padding: 20px; color: #a0a0ff; opacity: 0.7;">
+                                <span>⏳ Carregando simulações...</span>
+                            </div>
+                        }
+                        else if (simulacoesSalvas.Any())
+                        {
+                            <div class="simulacoes-list" style="max-height: 200px; overflow-y: auto; border: 1px solid rgba(110, 231, 183, 0.2); border-radius: 6px;">
+                                @foreach (var sim in simulacoesSalvas)
+                                {
+                                    <div class="simulacao-item @(simulacaoSelecionadaId == sim.Id ? "selected" : "") @(carregandoBanco && simulacaoSelecionadaId == sim.Id ? "loading" : "")" 
+                                         style="padding: 10px; border-bottom: 1px solid rgba(110, 231, 183, 0.1); cursor: pointer;"
+                                         @onclick="@(() => SelecionarSimulacao(sim))">
+                                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                                            <div>
+                                                <div style="font-weight: bold; color: white;">@sim.Nome</div>
+                                                <div style="font-size: 0.8rem; color: #a0a0ff;">
+                                                    @sim.NumeroCorpos corpos • @sim.Iteracoes iterações
+                                                </div>
+                                                <div style="font-size: 0.7rem; color: #6b7280;">
+                                                    @sim.DataCriacao.ToString("dd/MM/yy HH:mm")
+                                                </div>
+                                            </div>
+                                            <div style="display: flex; gap: 5px;">
+                                                <button @onclick="@(() => CarregarSimulacao(sim))" 
+                                                        @onclick:stopPropagation="true"
+                                                        disabled="@carregandoBanco"
+                                                        class="btn btn-db-load" style="padding: 4px 8px;" title="Carregar">
+                                                    @if (carregandoBanco && simulacaoSelecionadaId == sim.Id)
+                                                    {
+                                                        <span>⏳</span>
+                                                    }
+                                                    else
+                                                    {
+                                                        <span>📂</span>
+                                                    }
+                                                </button>
+                                                <button @onclick="@(() => DeletarSimulacao(sim))" 
+                                                        @onclick:stopPropagation="true"
+                                                        disabled="@carregandoBanco"
+                                                        class="btn btn-db-delete" style="padding: 4px 8px;" title="Deletar">
+                                                    <span>🗑️</span>
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                }
+                            </div>
+                        }
+                        else
+                        {
+                            <div style="text-align: center; padding: 20px; color: #6b7280; font-style: italic;">
+                                <span>Nenhuma simulação salva</span>
+                            </div>
+                        }
+                    </div>
+                </div>
+
+                <!-- Separador -->
+                <div style="border-top: 1px solid rgba(110, 231, 183, 0.2); margin: 15px 0;"></div>
+
+                <!-- Controles de Arquivo (TXT) -->
+                <div class="file-section">
+                    <h4 style="margin: 0 0 10px 0; color: #a0a0ff; font-size: 0.9rem;">📁 Arquivo Local (.txt)</h4>
+                    <div class="button-group">
+                        <button @onclick="SalvarTxt" class="btn btn-save">
+                            <span>💾</span> Salvar TXT
+                        </button>
+                        <label class="btn btn-load">
+                            <span>📂</span> Carregar TXT
+                            <InputFile OnChange="OnFileUpload" accept=".txt" hidden />
+                        </label>
+                    </div>
                 </div>
             </div>
 
             @if (!string.IsNullOrEmpty(mensagem))
             {
-                <div class="mensagem">@mensagem</div>
+                <div class="mensagem @(mensagemSucesso ? "mensagem-sucesso" : "mensagem-erro")">@mensagem</div>
             }
 
             <!-- Event-log ocupando o restante do espaço -->
@@ -130,7 +305,36 @@
     private ElementReference svgElement;
     private System.Timers.Timer? loop;
     private string mensagem = string.Empty;
-    private const double deltaTime = 0.016;
+    private bool mensagemSucesso = true;
+
+    // ✨ Variáveis do Banco de Dados
+    private string nomeSimulacao = "";
+    private int simulacaoSelecionadaId = 0;
+    private List<SimulacaoSalva>? simulacoesSalvas;
+    private bool salvandoBanco = false;
+    private bool carregandoBanco = false;
+
+    // ✅ CORREÇÃO: Variável para controlar quantidade de corpos
+    private int quantidadeCorposInput = 20;
+    private string quantidadeStatus = "Digite a quantidade e clique em Resetar";
+
+    // ✅ CORREÇÃO: Variável local para paralelismo
+    private bool usarParalelismoLocal
+    {
+        get => Simulacao.UsarParalelismo;
+        set
+        {
+            if (Simulacao.UsarParalelismo != value)
+            {
+                Simulacao.ConfigurarParalelismo(value, Environment.ProcessorCount);
+                MostrarMensagem($"⚡ Paralelismo {(value ? "ativado" : "desativado")}", true);
+                StateHasChanged();
+            }
+        }
+    }
+
+    // ✅ CORREÇÃO: Variável para forçar atualização do SVG
+    private int renderKey = 0;
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
@@ -145,52 +349,108 @@
             loop = new System.Timers.Timer(16);
             loop.Elapsed += async (_, __) =>
             {
-                Simulacao.Atualizar(deltaTime);
-                await InvokeAsync(StateHasChanged);
+                if (Simulacao.Executando)
+                {
+                    Simulacao.Atualizar();
+                    await InvokeAsync(StateHasChanged);
+                }
             };
             loop.AutoReset = true;
             loop.Start();
+
+            // ✨ Carregar lista de simulações ao iniciar
+            await AtualizarLista();
         }
     }
 
+    // ✅ CORREÇÃO: Métodos que retornam void NÃO devem ter await
     void Iniciar()
     {
         Simulacao.Iniciar();
-        mensagem = "🚀 Simulação iniciada!";
-        StateHasChanged();
+        MostrarMensagem("🚀 Simulação iniciada - Sistema gravitacional realista ativo!", true);
     }
 
     void Parar()
     {
-        Simulacao.Parar();
-        mensagem = "⏸️ Simulação pausada";
-        StateHasChanged();
+        Simulacao.Pausar();
+        MostrarMensagem("⏸️ Simulação pausada", true);
     }
 
+    // ✅ CORREÇÃO: Resetar agora é void, não Task
     void Resetar()
     {
-        Simulacao.NumCorpos = Math.Max(1, Simulacao.NumCorpos);
-        Simulacao.Resetar();
-        mensagem = $"🔄 Resetado com {Simulacao.NumCorpos} corpos";
+        // ✅ CORREÇÃO: Usar quantidadeCorposInput sem limite
+        if (quantidadeCorposInput < 1) quantidadeCorposInput = 1;
+        
+        Simulacao.Resetar(quantidadeCorposInput);
+        quantidadeStatus = $"✅ {quantidadeCorposInput} corpos aplicados";
+        
+        MostrarMensagem($"🔄 Resetado com {quantidadeCorposInput} corpos celestes realistas", true);
+        
+        // ✅ CORREÇÃO: Forçar atualização do SVG após reset
+        renderKey++;
         StateHasChanged();
     }
 
-    async Task Salvar()
+    // ✅ CORREÇÃO: AdicionarMaisCorpos agora é void
+    void AdicionarMaisCorpos()
+    {
+        if (quantidadeCorposInput < 1) quantidadeCorposInput = 10;
+        
+        Simulacao.AdicionarCorpos(quantidadeCorposInput);
+        quantidadeStatus = $"➕ {quantidadeCorposInput} corpos adicionados. Total: {Simulacao.Corpos.Count}";
+        
+        MostrarMensagem($"➕ {quantidadeCorposInput} corpos adicionados dinamicamente", true);
+        
+        renderKey++;
+        StateHasChanged();
+    }
+
+    // ✅ CORREÇÃO: RemoverAlgunsCorpos agora é void
+    void RemoverAlgunsCorpos()
+    {
+        if (Simulacao.Corpos.Count == 0) return;
+        
+        int quantidadeRemover = Math.Min(quantidadeCorposInput, Simulacao.Corpos.Count);
+        if (quantidadeRemover < 1) quantidadeRemover = 10;
+        
+        Simulacao.RemoverCorpos(quantidadeRemover);
+        quantidadeStatus = $"➖ {quantidadeRemover} corpos removidos. Total: {Simulacao.Corpos.Count}";
+        
+        MostrarMensagem($"➖ {quantidadeRemover} corpos removidos", true);
+        
+        renderKey++;
+        StateHasChanged();
+    }
+
+    // ✅ CORREÇÃO: LimparTodosCorpos agora é void
+    void LimparTodosCorpos()
+    {
+        Simulacao.LimparTodosCorpos();
+        quantidadeStatus = "🧹 Todos os corpos removidos";
+        
+        MostrarMensagem("🧹 Todos os corpos foram removidos", true);
+        
+        renderKey++;
+        StateHasChanged();
+    }
+
+    // ✅ CORREÇÃO: Métodos que retornam Task podem ter await
+    async Task SalvarTxt()
     {
         try
         {
-            string conteudo = Simulacao.GerarConteudoArquivo(Simulacao.Corpos, Simulacao.Iteracoes, deltaTime);
-            await JS.InvokeVoidAsync("baixarArquivo", "estado_simulacao.txt", conteudo);
-            mensagem = "✅ Arquivo salvo com sucesso!";
-            StateHasChanged();
+            string conteudo = Simulacao.GerarConteudoArquivo();
+            await JS.InvokeVoidAsync("baixarArquivo", "simulacao_gravitacional.txt", conteudo);
+            MostrarMensagem("✅ Arquivo TXT salvo com sucesso!", true);
         }
         catch (Exception ex)
         {
-            mensagem = $"❌ Erro ao salvar: {ex.Message}";
-            StateHasChanged();
+            MostrarMensagem($"❌ Erro ao salvar: {ex.Message}", false);
         }
     }
 
+    // ✅ CORREÇÃO: OnFileUpload retorna Task
     async Task OnFileUpload(InputFileChangeEventArgs e)
     {
         try
@@ -199,14 +459,200 @@
             using var reader = new StreamReader(file.OpenReadStream());
             var conteudo = await reader.ReadToEndAsync();
             Simulacao.CarregarDeTxt(conteudo);
-            mensagem = $"📂 Arquivo '{file.Name}' carregado!";
+            MostrarMensagem($"📂 Arquivo '{file.Name}' carregado!", true);
+            
+            // ✅ CORREÇÃO: Forçar atualização do SVG após carregar arquivo
+            renderKey++;
             StateHasChanged();
         }
         catch (Exception ex)
         {
-            mensagem = $"❌ Erro ao carregar: {ex.Message}";
+            MostrarMensagem($"❌ Erro ao carregar: {ex.Message}", false);
+        }
+    }
+
+    // ✅ CORREÇÃO: SalvarNoBanco retorna Task
+    async Task SalvarNoBanco()
+    {
+        if (string.IsNullOrWhiteSpace(nomeSimulacao))
+        {
+            MostrarMensagem("⚠️ Digite um nome para a simulação", false);
+            return;
+        }
+
+        salvandoBanco = true;
+        StateHasChanged();
+
+        try
+        {
+            // ✅ CONVERSÃO COMPLETA COM TODAS AS PROPRIEDADES REALISTAS
+            var corposDto = Simulacao.Corpos.Select(c => new ProgramacaoAvancada.DTOs.CorpoDto
+            {
+                Nome = c.Nome,
+                Massa = c.Massa,
+                Raio = c.Raio,
+                PosX = c.PosX,
+                PosY = c.PosY,
+                VelX = c.VelX,
+                VelY = c.VelY,
+                Cor = c.Cor,
+                Tipo = c.Tipo.ToString(),
+                Densidade = c.Densidade,
+                Temperatura = c.Temperatura,
+                VelocidadeRotacao = c.VelocidadeRotacao,
+                AnguloRotacao = c.AnguloRotacao,
+                Brilho = c.Brilho,
+                EhLuminoso = c.EhLuminoso
+            }).ToList();
+
+            // ✅ CORREÇÃO: Usar DTOs.SalvarSimulacaoRequest
+            var request = new ProgramacaoAvancada.Services.SalvarSimulacaoRequest
+            {
+                Nome = nomeSimulacao,
+                NumeroCorpos = Simulacao.Corpos.Count,
+                Iteracoes = Simulacao.Iteracoes,
+                Colisoes = Simulacao.Colisoes,
+                Gravidade = Simulacao.Gravidade,
+                CanvasWidth = (int)Simulacao.CanvasWidth,
+                CanvasHeight = (int)Simulacao.CanvasHeight,
+                Corpos = corposDto
+            };
+
+            var resultado = await ApiService.SalvarSimulacaoAsync(request);
+            
+            if (resultado != null)
+            {
+                MostrarMensagem($"✅ '{nomeSimulacao}' salvo no banco! ID: {resultado.Id}", true);
+                nomeSimulacao = "";
+                await AtualizarLista();
+                
+                Simulacao.AdicionarEventoManual($"💾 SALVO NO BANCO - ID: {resultado.Id}");
+            }
+            else
+            {
+                MostrarMensagem("❌ Erro ao salvar no banco", false);
+            }
+        }
+        catch (Exception ex)
+        {
+            MostrarMensagem($"❌ Erro: {ex.Message}", false);
+        }
+        finally
+        {
+            salvandoBanco = false;
             StateHasChanged();
         }
+    }
+
+    // ✅ CORREÇÃO: SelecionarSimulacao é void
+    void SelecionarSimulacao(SimulacaoSalva simulacao)
+    {
+        simulacaoSelecionadaId = simulacao.Id;
+        StateHasChanged();
+    }
+
+    // ✅ CORREÇÃO: CarregarSimulacao retorna Task
+    async Task CarregarSimulacao(SimulacaoSalva simulacao)
+    {
+        carregandoBanco = true;
+        simulacaoSelecionadaId = simulacao.Id;
+        StateHasChanged();
+
+        try
+        {
+            var simulacaoCompleta = await ApiService.GetSimulacaoPorIdAsync(simulacao.Id);
+            if (simulacaoCompleta != null)
+            {
+                await AplicarSimulacaoCarregada(simulacaoCompleta);
+            }
+            else
+            {
+                MostrarMensagem("❌ Simulação não encontrada", false);
+            }
+        }
+        catch (Exception ex)
+        {
+            MostrarMensagem($"❌ Erro ao carregar: {ex.Message}", false);
+        }
+        finally
+        {
+            carregandoBanco = false;
+            StateHasChanged();
+        }
+    }
+
+    // ✅ CORREÇÃO: DeletarSimulacao retorna Task
+    async Task DeletarSimulacao(SimulacaoSalva simulacao)
+    {
+        if (!await JS.InvokeAsync<bool>("confirm", $"Tem certeza que deseja deletar '{simulacao.Nome}'?"))
+            return;
+
+        try
+        {
+            var sucesso = await ApiService.DeletarSimulacaoAsync(simulacao.Id);
+            if (sucesso)
+            {
+                MostrarMensagem($"🗑️ '{simulacao.Nome}' deletada!", true);
+                if (simulacaoSelecionadaId == simulacao.Id)
+                    simulacaoSelecionadaId = 0;
+                await AtualizarLista();
+            }
+        }
+        catch (Exception ex)
+        {
+            MostrarMensagem($"❌ Erro ao deletar: {ex.Message}", false);
+        }
+    }
+
+    // ✅ CORREÇÃO: AplicarSimulacaoCarregada retorna Task
+    async Task AplicarSimulacaoCarregada(SimulacaoSalva simulacao)
+    {
+        try
+        {
+            // Parar simulação atual
+            Simulacao.Pausar();
+            
+            // Resetar com a quantidade de corpos da simulação salva
+            quantidadeCorposInput = simulacao.NumeroCorpos;
+            Resetar(); // ✅ CORREÇÃO: Não usar await pois Resetar é void
+            
+            // Atualizar estatísticas
+            Simulacao.AdicionarEventoManual($"📂 Carregada: '{simulacao.Nome}' com {simulacao.NumeroCorpos} corpos");
+            
+            MostrarMensagem($"📂 '{simulacao.Nome}' carregada com sucesso!", true);
+        }
+        catch (Exception ex)
+        {
+            MostrarMensagem($"❌ Erro ao carregar simulação: {ex.Message}", false);
+        }
+    }
+
+    // ✅ CORREÇÃO: AtualizarLista retorna Task
+    async Task AtualizarLista()
+    {
+        try
+        {
+            simulacoesSalvas = await ApiService.GetSimulacoesRecentesAsync(20);
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            MostrarMensagem($"❌ Erro ao atualizar lista: {ex.Message}", false);
+        }
+    }
+
+    // ✅ CORREÇÃO: MostrarMensagem é void
+    void MostrarMensagem(string msg, bool sucesso)
+    {
+        mensagem = msg;
+        mensagemSucesso = sucesso;
+        StateHasChanged();
+        
+        // Auto-remover mensagem após 5 segundos
+        _ = Task.Delay(5000).ContinueWith(_ => {
+            mensagem = "";
+            InvokeAsync(StateHasChanged);
+        });
     }
 
     public void Dispose()
