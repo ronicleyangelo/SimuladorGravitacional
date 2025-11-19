@@ -2984,11 +2984,7 @@ C:\Users\ronic\OneDrive\Documentos\faculdade\SimuladorGravitacional\obj\Debug\ne
 C:\Users\ronic\OneDrive\Documentos\faculdade\SimuladorGravitacional\obj\Debug\net9.0\ProgramacaoAvancada.pdb
 C:\Users\ronic\OneDrive\Documentos\faculdade\SimuladorGravitacional\obj\Debug\net9.0\ref\ProgramacaoAvancada.dll
 C:\Users\ronic\OneDrive\Documentos\faculdade\SimuladorGravitacional\bin\Debug\net9.0\wwwroot\_framework\segmentation-rules.json
-C:\Users\ronic\OneDrive\Documentos\faculdade\SimuladorGravitacional\bin\Debug\net9.0\wwwroot\_framework\ProgramacaoAvancada.amxr3iusih.wasm
-C:\Users\ronic\OneDrive\Documentos\faculdade\SimuladorGravitacional\bin\Debug\net9.0\wwwroot\_framework\ProgramacaoAvancada.5ygue8vm30.pdb
 C:\Users\ronic\OneDrive\Documentos\faculdade\SimuladorGravitacional\bin\Debug\net9.0\wwwroot\_framework\segmentation-rules.json.gz
-C:\Users\ronic\OneDrive\Documentos\faculdade\SimuladorGravitacional\bin\Debug\net9.0\wwwroot\_framework\ProgramacaoAvancada.amxr3iusih.wasm.gz
-C:\Users\ronic\OneDrive\Documentos\faculdade\SimuladorGravitacional\bin\Debug\net9.0\wwwroot\_framework\ProgramacaoAvancada.5ygue8vm30.pdb.gz
 C:\Users\ronic\OneDrive\Documentos\faculdade\SimuladorGravitacional\bin\Debug\net9.0\segmentation-rules.json
 C:\Users\ronic\OneDrive\Documentos\faculdade\SimuladorGravitacional\obj\Debug\net9.0\compressed\qq4gf3w0ei-{0}-tbwf1tf89s-tbwf1tf89s.gz
 C:\Users\ronic\OneDrive\Documentos\faculdade\SimuladorGravitacional\obj\Debug\net9.0\compressed\noxwefzkmi-{0}-mv82910u0z-mv82910u0z.gz
@@ -3242,7 +3238,11 @@ C:\Users\ronic\OneDrive\Documentos\faculdade\SimuladorGravitacional\obj\Debug\ne
 C:\Users\ronic\OneDrive\Documentos\faculdade\SimuladorGravitacional\obj\Debug\net9.0\compressed\x82yxjp6ag-{0}-tptq2av103-tptq2av103.gz
 C:\Users\ronic\OneDrive\Documentos\faculdade\SimuladorGravitacional\obj\Debug\net9.0\compressed\382m67ybpq-{0}-lfu7j35m59-lfu7j35m59.gz
 C:\Users\ronic\OneDrive\Documentos\faculdade\SimuladorGravitacional\obj\Debug\net9.0\compressed\93pqk43do5-{0}-ec9yy67949-ec9yy67949.gz
-C:\Users\ronic\OneDrive\Documentos\faculdade\SimuladorGravitacional\obj\Debug\net9.0\compressed\99m76xzqox-{0}-amxr3iusih-amxr3iusih.gz
-C:\Users\ronic\OneDrive\Documentos\faculdade\SimuladorGravitacional\obj\Debug\net9.0\compressed\h894lqqfso-{0}-5ygue8vm30-5ygue8vm30.gz
-C:\Users\ronic\OneDrive\Documentos\faculdade\SimuladorGravitacional\obj\Debug\net9.0\compressed\8qnsuzw5lv-{0}-szxnbi8rj6-szxnbi8rj6.gz
 C:\Users\ronic\OneDrive\Documentos\faculdade\SimuladorGravitacional\obj\Debug\net9.0\swae.build.ex.cache
+C:\Users\ronic\OneDrive\Documentos\faculdade\SimuladorGravitacional\bin\Debug\net9.0\wwwroot\_framework\ProgramacaoAvancada.fuh37qd7zm.wasm
+C:\Users\ronic\OneDrive\Documentos\faculdade\SimuladorGravitacional\bin\Debug\net9.0\wwwroot\_framework\ProgramacaoAvancada.mmn0betduz.pdb
+C:\Users\ronic\OneDrive\Documentos\faculdade\SimuladorGravitacional\bin\Debug\net9.0\wwwroot\_framework\ProgramacaoAvancada.fuh37qd7zm.wasm.gz
+C:\Users\ronic\OneDrive\Documentos\faculdade\SimuladorGravitacional\bin\Debug\net9.0\wwwroot\_framework\ProgramacaoAvancada.mmn0betduz.pdb.gz
+C:\Users\ronic\OneDrive\Documentos\faculdade\SimuladorGravitacional\obj\Debug\net9.0\compressed\99m76xzqox-{0}-fuh37qd7zm-fuh37qd7zm.gz
+C:\Users\ronic\OneDrive\Documentos\faculdade\SimuladorGravitacional\obj\Debug\net9.0\compressed\h894lqqfso-{0}-mmn0betduz-mmn0betduz.gz
+C:\Users\ronic\OneDrive\Documentos\faculdade\SimuladorGravitacional\obj\Debug\net9.0\compressed\8qnsuzw5lv-{0}-acp4ixg4l2-acp4ixg4l2.gz

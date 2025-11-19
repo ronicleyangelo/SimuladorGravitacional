@@ -37,26 +37,28 @@
                     </filter>
                 </defs>
 
-                <!-- ✅ CORREÇÃO: Renderização com rotação e efeitos realistas -->
+                <!-- ✅ CORREÇÃO CRÍTICA: Renderização com formatação correta dos números -->
                 @foreach (var corpo in Simulacao.Corpos)
                 {
+                    var transformValue = $"rotate({FormatarNumero(corpo.AnguloRotacao * 180 / Math.PI)} {FormatarNumero(corpo.PosX)} {FormatarNumero(corpo.PosY)})";
+                    
                     <g @key="@($"{corpo.Nome}-{renderKey}")" 
-                       transform="rotate(@(corpo.AnguloRotacao * 180 / Math.PI) @corpo.PosX @corpo.PosY)">
+                       transform="@transformValue">
                         <circle
-                            cx="@corpo.PosX.ToString(System.Globalization.CultureInfo.InvariantCulture)"
-                            cy="@corpo.PosY.ToString(System.Globalization.CultureInfo.InvariantCulture)"
-                            r="@corpo.Raio.ToString(System.Globalization.CultureInfo.InvariantCulture)" 
+                            cx="@FormatarNumero(corpo.PosX)"
+                            cy="@FormatarNumero(corpo.PosY)"
+                            r="@FormatarNumero(corpo.Raio)" 
                             fill="@corpo.Cor"
-                            opacity="@corpo.Brilho" 
+                            opacity="@FormatarNumero(corpo.Brilho)" 
                             filter="@(corpo.EhLuminoso ? "url(#star-glow)" : "url(#glow)")" />
                             
                         <!-- Indicador de rotação para corpos grandes -->
                         @if (corpo.Raio > 8)
                         {
-                            <line x1="@corpo.PosX" 
-                                  y1="@corpo.PosY" 
-                                  x2="@(corpo.PosX + corpo.Raio * 0.7)" 
-                                  y2="@corpo.PosY" 
+                            <line x1="@FormatarNumero(corpo.PosX)" 
+                                  y1="@FormatarNumero(corpo.PosY)" 
+                                  x2="@FormatarNumero(corpo.PosX + corpo.Raio * 0.7)" 
+                                  y2="@FormatarNumero(corpo.PosY)" 
                                   stroke="white" 
                                   stroke-width="1" 
                                   opacity="0.6" />
@@ -214,7 +216,7 @@
                                             <div>
                                                 <div style="font-weight: bold; color: white;">@sim.Nome</div>
                                                 <div style="font-size: 0.8rem; color: #a0a0ff;">
-                                                    @sim.NumeroCorpos corpos • @sim.Iteracoes iterações
+                                                    @sim.NumeroCorpos corpos • @sim.Iteracoes iterações • @sim.Colisoes colisões
                                                 </div>
                                                 <div style="font-size: 0.7rem; color: #6b7280;">
                                                     @sim.DataCriacao.ToString("dd/MM/yy HH:mm")
@@ -336,10 +338,20 @@
     // ✅ CORREÇÃO: Variável para forçar atualização do SVG
     private int renderKey = 0;
 
+    // ✅ CORREÇÃO CRÍTICA: Método para formatar números corretamente para SVG
+    private string FormatarNumero(double valor)
+    {
+        // Usar cultura invariante para garantir formato correto (ponto decimal)
+        return valor.ToString("0.#####", System.Globalization.CultureInfo.InvariantCulture);
+    }
+
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (firstRender)
         {
+            // ✅ CORREÇÃO CRÍTICA: Inscrever-se aos eventos de mudança do serviço
+            Simulacao.OnChange += StateHasChanged;
+
             var w = await JS.InvokeAsync<int>("eval", "document.querySelector('.simulation-area').clientWidth");
             var h = await JS.InvokeAsync<int>("eval", "document.querySelector('.simulation-area').clientHeight");
 
@@ -352,7 +364,8 @@
                 if (Simulacao.Executando)
                 {
                     Simulacao.Atualizar();
-                    await InvokeAsync(StateHasChanged);
+                    // ✅ CORREÇÃO: StateHasChanged agora é chamado via evento OnChange
+                    // Removemos a chamada direta aqui para evitar duplicação
                 }
             };
             loop.AutoReset = true;
@@ -655,8 +668,12 @@
         });
     }
 
+    // ✅ CORREÇÃO CRÍTICA: Atualizar o método Dispose para desinscrever o evento
     public void Dispose()
     {
+        // ✅ CORREÇÃO: Desinscrever o evento ao descartar
+        Simulacao.OnChange -= StateHasChanged;
+        
         loop?.Stop();
         loop?.Dispose();
     }

@@ -11,24 +11,26 @@ namespace ProgramacaoAvancada.Services
     {
         // ✅ Usar SUA classe Universo existente
         private Universo _universo;
-        
+
         public List<Corpo> Corpos => _universo.Corpos;
         public List<string> Eventos { get; private set; } = new List<string>();
+
+        // ✅ CORREÇÃO CRÍTICA: Garantir que Iteracoes e Colisoes são incrementadas
         public int Iteracoes { get; private set; } = 0;
         public int Colisoes { get; private set; } = 0;
-        
+
         // ✅ Área expandida para 1000+ corpos
         public double CanvasWidth { get; set; } = 2000;
         public double CanvasHeight { get; set; } = 1600;
         public double Gravidade { get; set; } = 50.0;
-        
+
         // ✅ SEM LIMITE - apenas contador de referência
-        public int NumCorpos 
-        { 
+        public int NumCorpos
+        {
             get => Corpos.Count;
             set { } // Ignorar set, usar métodos de adição
         }
-        
+
         public bool Executando { get; private set; } = false;
         public bool Rodando => Executando;
 
@@ -40,6 +42,10 @@ namespace ProgramacaoAvancada.Services
         private OtimizadorParalelo _otimizador = new OtimizadorParalelo();
         private object _lockObject = new object();
 
+        // ✅ CORREÇÃO: Adicionar evento para notificar mudanças
+        public event Action? OnChange;
+        private void NotifyStateChanged() => OnChange?.Invoke();
+
         public SimuladorService()
         {
             Resetar();
@@ -49,9 +55,9 @@ namespace ProgramacaoAvancada.Services
         {
             // ✅ CORREÇÃO: Usar fator de gravidade MUITO maior
             double fatorGravidade = 1e10 * Gravidade;
-            
+
             _universo = new Universo(CanvasWidth, CanvasHeight, fatorGravidade);
-            
+
             // Limpar corpos existentes
             Corpos.Clear();
 
@@ -61,6 +67,7 @@ namespace ProgramacaoAvancada.Services
                 AdicionarCorpos(quantidadeCorpos);
             }
 
+            // ✅ CORREÇÃO: Zerar contadores com notificação
             Iteracoes = 0;
             Colisoes = 0;
             Eventos.Clear();
@@ -70,6 +77,8 @@ namespace ProgramacaoAvancada.Services
             AdicionarEvento($"⚡ Gravidade: {Gravidade}, Fator: {fatorGravidade:e2}");
             AdicionarEvento($"🎯 Sistema realista com movimento inicial");
             AdicionarEvento($"🔧 Paralelismo: {(UsarParalelismo ? "Ativo" : "Inativo")}");
+
+            NotifyStateChanged();
         }
 
         // ✅ MÉTODO PARA ADICIONAR CORPOS DINAMICAMENTE SEM LIMITAÇÃO
@@ -121,6 +130,7 @@ namespace ProgramacaoAvancada.Services
             }
 
             AdicionarEvento($"🆕 {corposAdicionados} corpos adicionados. Total: {Corpos.Count}");
+            NotifyStateChanged();
         }
 
         // ✅ MÉTODO PARA ADICIONAR CORPOS EM POSIÇÕES ESPECÍFICAS
@@ -174,6 +184,7 @@ namespace ProgramacaoAvancada.Services
             }
 
             AdicionarEvento($"📍 {corposAdicionados} corpos adicionados em posições específicas. Total: {Corpos.Count}");
+            NotifyStateChanged();
         }
 
         // ✅ MÉTODO PARA ADICIONAR CORPOS COM CONFIGURAÇÃO PERSONALIZADA
@@ -190,6 +201,7 @@ namespace ProgramacaoAvancada.Services
             }
 
             AdicionarEvento($"🎨 {corposPersonalizados.Count} corpos personalizados adicionados. Total: {Corpos.Count}");
+            NotifyStateChanged();
         }
 
         // ✅ MÉTODO PARA REMOVER CORPOS
@@ -205,6 +217,7 @@ namespace ProgramacaoAvancada.Services
                     // Remove os primeiros X corpos
                     Corpos.RemoveRange(0, quantidadeRemover);
                     AdicionarEvento($"🗑️ {quantidadeRemover} corpos removidos. Total: {Corpos.Count}");
+                    NotifyStateChanged();
                 }
             }
         }
@@ -216,7 +229,10 @@ namespace ProgramacaoAvancada.Services
             {
                 int quantidade = Corpos.Count;
                 Corpos.Clear();
+                Iteracoes = 0;
+                Colisoes = 0;
                 AdicionarEvento($"🧹 Todos os {quantidade} corpos removidos");
+                NotifyStateChanged();
             }
         }
 
@@ -224,29 +240,31 @@ namespace ProgramacaoAvancada.Services
         {
             Executando = true;
             AdicionarEvento("🚀 Simulação iniciada");
+            NotifyStateChanged();
         }
 
         public void Parar()
         {
             Executando = false;
             AdicionarEvento("⏸️ Simulação parada");
+            NotifyStateChanged();
         }
 
         public void Pausar() => Parar();
 
-        // ✅ MÉTODO ATUALIZAR COM PARALELISMO INTELIGENTE
+        // ✅ CORREÇÃO CRÍTICA: Método Atualizar com incremento garantido de Iteracoes
         public void Atualizar()
         {
             if (!Executando) return;
 
             var stopwatch = System.Diagnostics.Stopwatch.StartNew();
-            
+
             try
             {
-                int count = Corpos.Count;
-                bool usarParalelo = _otimizador.DeveUsarParalelismo(count) && UsarParalelismo;
-                
-                if (usarParalelo && count > 20)
+                int countAntes = Corpos.Count;
+                bool usarParalelo = _otimizador.DeveUsarParalelismo(countAntes) && UsarParalelismo;
+
+                if (usarParalelo && countAntes > 20)
                 {
                     // ✅ MODO PARALELO ULTRA-OTIMIZADO
                     _universo.SimularParalelo(0.05);
@@ -257,19 +275,20 @@ namespace ProgramacaoAvancada.Services
                     _universo.Simular(0.05);
                 }
 
+                // ✅ CORREÇÃO CRÍTICA: INCREMENTAR ITERAÇÕES SEMPRE
                 Iteracoes++;
                 stopwatch.Stop();
-                
+
                 // ✅ REGISTRAR PARA AUTO-OTIMIZAÇÃO
                 _otimizador.RegistrarTempo(usarParalelo, stopwatch.Elapsed.TotalMilliseconds);
-                
-                // ✅ DETECTAR COLISÕES
-                int corposDepois = Corpos.Count;
-                if (corposDepois < count)
+
+                // ✅ CORREÇÃO CRÍTICA: DETECTAR COLISÕES CORRETAMENTE
+                int countDepois = Corpos.Count;
+                if (countDepois < countAntes)
                 {
-                    int colisoes = count - corposDepois;
-                    Colisoes += colisoes;
-                    AdicionarEvento($"💥 {colisoes} fusão(ões)! {corposDepois} corpos restantes");
+                    int novasColisoes = countAntes - countDepois;
+                    Colisoes += novasColisoes;
+                    AdicionarEvento($"💥 {novasColisoes} fusão(ões)! {countDepois} corpos restantes");
                 }
 
                 // ✅ FEEDBACK DE PERFORMANCE
@@ -278,7 +297,7 @@ namespace ProgramacaoAvancada.Services
                     var speedup = _otimizador.CalcularSpeedupMedio();
                     AdicionarEvento($"📈 It: {Iteracoes} | Corpos: {Corpos.Count} | Col: {Colisoes}");
                     AdicionarEvento($"⚡ Paralelo: {usarParalelo} | Speedup: {speedup:0.0}x | Tempo: {stopwatch.Elapsed.TotalMilliseconds:0.000}ms");
-                    
+
                     if (Corpos.Any())
                     {
                         double velocidadeMedia;
@@ -292,7 +311,7 @@ namespace ProgramacaoAvancada.Services
                         {
                             velocidadeMedia = Corpos.Average(c => Math.Sqrt(c.VelX * c.VelX + c.VelY * c.VelY));
                         }
-                        
+
                         if (velocidadeMedia > 0.01)
                         {
                             AdicionarEvento($"🎯 Velocidade média: {velocidadeMedia:0.000}");
@@ -314,11 +333,15 @@ namespace ProgramacaoAvancada.Services
                     }
                     Executando = false;
                 }
+
+                // ✅ CORREÇÃO: Notificar mudanças após cada atualização
+                NotifyStateChanged();
             }
             catch (Exception ex)
             {
                 AdicionarEvento($"❌ Erro na iteração {Iteracoes}: {ex.Message}");
                 Executando = false;
+                NotifyStateChanged();
             }
         }
 
@@ -329,8 +352,12 @@ namespace ProgramacaoAvancada.Services
             _universo = new Universo(CanvasWidth, CanvasHeight, fatorGravidade);
             Corpos.Clear();
 
+            // ✅ CORREÇÃO: Zerar contadores
+            Iteracoes = 0;
+            Colisoes = 0;
+
             var random = new Random();
-            
+
             // ✅ SOL (no centro)
             var sol = new Corpo("Sol", 200.0, 1.0, CanvasWidth / 2, CanvasHeight / 2, "#FFD700")
             {
@@ -360,10 +387,10 @@ namespace ProgramacaoAvancada.Services
                 {
                     double raioOrbita = orbitaBase + (i * 100);
                     double angulo = random.NextDouble() * 2 * Math.PI;
-                    
+
                     double posX = CanvasWidth / 2 + Math.Cos(angulo) * raioOrbita;
                     double posY = CanvasHeight / 2 + Math.Sin(angulo) * raioOrbita;
-                    
+
                     double velocidadeOrbital = Math.Sqrt(200.0 / raioOrbita) * 2.5;
                     double velX = -Math.Sin(angulo) * velocidadeOrbital;
                     double velY = Math.Cos(angulo) * velocidadeOrbital;
@@ -397,10 +424,10 @@ namespace ProgramacaoAvancada.Services
                 {
                     double raioOrbita = orbitaBase + (i * 100);
                     double angulo = random.NextDouble() * 2 * Math.PI;
-                    
+
                     double posX = CanvasWidth / 2 + Math.Cos(angulo) * raioOrbita;
                     double posY = CanvasHeight / 2 + Math.Sin(angulo) * raioOrbita;
-                    
+
                     double velocidadeOrbital = Math.Sqrt(200.0 / raioOrbita) * 2.5;
                     double velX = -Math.Sin(angulo) * velocidadeOrbital;
                     double velY = Math.Cos(angulo) * velocidadeOrbital;
@@ -421,6 +448,7 @@ namespace ProgramacaoAvancada.Services
             }
 
             AdicionarEvento($"☀️ Sistema Solar criado com {numeroPlanetas} planetas em área expandida!");
+            NotifyStateChanged();
         }
 
         private string GerarCorAleatoria(Random random)
@@ -435,10 +463,15 @@ namespace ProgramacaoAvancada.Services
             _universo = new Universo(CanvasWidth, CanvasHeight, fatorGravidade);
             Corpos.Clear();
 
+            // ✅ CORREÇÃO: Zerar contadores
+            Iteracoes = 0;
+            Colisoes = 0;
+
             // ✅ SIMPLESMENTE ADICIONAR CORPOS SEM LIMITE
             AdicionarCorpos(quantidadeCorpos);
 
             AdicionarEvento($"🌠 Aglomerado criado com {quantidadeCorpos} corpos em área expandida!");
+            NotifyStateChanged();
         }
 
         // ✅ MÉTODO PARA CRIAR GALÁXIA COM MUITOS CORPOS
@@ -448,8 +481,12 @@ namespace ProgramacaoAvancada.Services
             _universo = new Universo(CanvasWidth, CanvasHeight, fatorGravidade);
             Corpos.Clear();
 
+            // ✅ CORREÇÃO: Zerar contadores
+            Iteracoes = 0;
+            Colisoes = 0;
+
             var random = new Random();
-            
+
             // ✅ NÚCLEO GALÁCTICO (grande massa central)
             var nucleo = new Corpo("Núcleo Galáctico", 500.0, 5.0, CanvasWidth / 2, CanvasHeight / 2, "#FFD700")
             {
@@ -465,6 +502,7 @@ namespace ProgramacaoAvancada.Services
             AdicionarCorpos(quantidadeEstrelas);
 
             AdicionarEvento($"🌌 Galáxia criada com {quantidadeEstrelas + 1} corpos em área expandida!");
+            NotifyStateChanged();
         }
 
         // ✅ NOVO MÉTODO: CRIAR SIMULAÇÃO GIGANTE
@@ -474,12 +512,17 @@ namespace ProgramacaoAvancada.Services
             _universo = new Universo(CanvasWidth, CanvasHeight, fatorGravidade);
             Corpos.Clear();
 
+            // ✅ CORREÇÃO: Zerar contadores
+            Iteracoes = 0;
+            Colisoes = 0;
+
             // ✅ ADICIONAR MUITOS CORPOS COM PARALELISMO
             AdicionarCorpos(quantidadeCorpos);
 
             AdicionarEvento($"🌠 SIMULAÇÃO GIGANTE criada com {quantidadeCorpos} corpos!");
             AdicionarEvento($"📐 Área máxima: {CanvasWidth}x{CanvasHeight}");
             AdicionarEvento($"⚡ Use paralelismo para melhor performance");
+            NotifyStateChanged();
         }
 
         private void AdicionarEvento(string mensagem)
@@ -498,9 +541,10 @@ namespace ProgramacaoAvancada.Services
             {
                 GrauParalelismo = Math.Max(1, Math.Min(Environment.ProcessorCount * 2, grauParalelismo.Value));
             }
-            
+
             AdicionarEvento($"🔧 Paralelismo {(usarParalelismo ? "ativado" : "desativado")} " +
                           $"{(grauParalelismo.HasValue ? $"(Grau: {GrauParalelismo})" : "")}");
+            NotifyStateChanged();
         }
 
         // ✅ MÉTODO PARA CONFIGURAÇÃO AUTOMÁTICA
@@ -508,7 +552,7 @@ namespace ProgramacaoAvancada.Services
         {
             int numCores = Environment.ProcessorCount;
             int numCorpos = Corpos.Count;
-            
+
             if (numCorpos < 100)
             {
                 UsarParalelismo = false;
@@ -524,22 +568,23 @@ namespace ProgramacaoAvancada.Services
                 UsarParalelismo = true;
                 GrauParalelismo = numCores;
             }
-            
+
             AdicionarEvento($"🔧 Paralelismo automático: {(UsarParalelismo ? "Ativo" : "Inativo")}");
             AdicionarEvento($"🎯 Configuração: {numCorpos} corpos → {GrauParalelismo} threads");
+            NotifyStateChanged();
         }
 
         public string GerarConteudoArquivo()
         {
             // ✅ CÁLCULO PARALELO DA DISTRIBUIÇÃO para muitos corpos
-            var distribuicao = UsarParalelismo && Corpos.Count > 1000 
+            var distribuicao = UsarParalelismo && Corpos.Count > 1000
                 ? Corpos.AsParallel()
                     .WithDegreeOfParallelism(GrauParalelismo)
                     .GroupBy(c => c.Tipo)
                     .ToDictionary(g => g.Key.ToString(), g => g.Count())
                 : Corpos.GroupBy(c => c.Tipo)
                     .ToDictionary(g => g.Key.ToString(), g => g.Count());
-            
+
             return $"=== SIMULAÇÃO GRAVITACIONAL ===\n" +
                    $"Corpos: {Corpos.Count}\n" +
                    $"Iterações: {Iteracoes}\n" +
@@ -553,6 +598,7 @@ namespace ProgramacaoAvancada.Services
         public void CarregarDeTxt(string conteudo)
         {
             AdicionarEvento("📁 Arquivo carregado: " + conteudo.Substring(0, Math.Min(50, conteudo.Length)) + "...");
+            NotifyStateChanged();
         }
 
         public void AdicionarCorpoPersonalizado(double x, double y, string tipoStr)
@@ -566,9 +612,10 @@ namespace ProgramacaoAvancada.Services
                     corpo.PosY = y;
                     corpo.VelX = (new Random().NextDouble() - 0.5) * 3.0;
                     corpo.VelY = (new Random().NextDouble() - 0.5) * 3.0;
-                    
+
                     _universo.AdicionarCorpo(corpo);
                     AdicionarEvento($"🆕 {tipo} adicionado em ({x:0}, {y:0}). Total: {Corpos.Count}");
+                    NotifyStateChanged();
                 }
             }
             catch (Exception ex)
@@ -579,7 +626,7 @@ namespace ProgramacaoAvancada.Services
 
         public object ObterEstatisticasDetalhadas()
         {
-            if (!Corpos.Any()) 
+            if (!Corpos.Any())
                 return new { Mensagem = "Nenhum corpo na simulação" };
 
             // ✅ CÁLCULOS PARALELOS PARA GRANDES QUANTIDADES
@@ -591,15 +638,15 @@ namespace ProgramacaoAvancada.Services
                 massaTotal = Corpos.AsParallel()
                     .WithDegreeOfParallelism(GrauParalelismo)
                     .Sum(c => c.Massa);
-                    
+
                 massaMedia = Corpos.AsParallel()
                     .WithDegreeOfParallelism(GrauParalelismo)
                     .Average(c => c.Massa);
-                    
+
                 velocidadeMedia = Corpos.AsParallel()
                     .WithDegreeOfParallelism(GrauParalelismo)
                     .Average(c => Math.Sqrt(c.VelX * c.VelX + c.VelY * c.VelY));
-                    
+
                 distribuicao = Corpos.AsParallel()
                     .WithDegreeOfParallelism(GrauParalelismo)
                     .GroupBy(c => c.Tipo)
@@ -628,7 +675,8 @@ namespace ProgramacaoAvancada.Services
                 Executando = Executando,
                 Area = $"{CanvasWidth}x{CanvasHeight}",
                 Paralelismo = UsarParalelismo ? $"Ativo (Grau: {GrauParalelismo})" : "Inativo",
-                Performance = new {
+                Performance = new
+                {
                     SpeedupMedio = statsPerformance.SpeedupMedio,
                     TempoMedioFrame = statsPerformance.TempoMedioFrame,
                     Eficiencia = statsPerformance.Eficiencia
@@ -642,17 +690,19 @@ namespace ProgramacaoAvancada.Services
             var sb = new System.Text.StringBuilder();
             sb.AppendLine("=== DIAGNÓSTICO ===");
             sb.AppendLine($"Corpos: {Corpos.Count}");
+            sb.AppendLine($"Iterações: {Iteracoes}");
+            sb.AppendLine($"Colisões: {Colisoes}");
             sb.AppendLine($"Área: {CanvasWidth}x{CanvasHeight}");
             sb.AppendLine($"Executando: {Executando}");
             sb.AppendLine($"Paralelismo: {(UsarParalelismo ? "Ativo" : "Inativo")}");
             sb.AppendLine($"Grau Paralelismo: {GrauParalelismo}");
             sb.AppendLine($"Processadores: {Environment.ProcessorCount}");
-            
+
             var stats = _otimizador.ObterEstatisticas();
             sb.AppendLine($"Speedup Médio: {stats.SpeedupMedio:0.0}x");
             sb.AppendLine($"Eficiência: {stats.Eficiencia:0}%");
             sb.AppendLine($"Tempo/Frame: {stats.TempoMedioFrame:0.000}ms");
-            
+
             if (Corpos.Any())
             {
                 double velMedia;
@@ -666,9 +716,9 @@ namespace ProgramacaoAvancada.Services
                 {
                     velMedia = Corpos.Average(c => Math.Sqrt(c.VelX * c.VelX + c.VelY * c.VelY));
                 }
-                
+
                 sb.AppendLine($"Velocidade média: {velMedia:0.000000}");
-                
+
                 if (velMedia < 0.001)
                     sb.AppendLine("⚠️  Velocidades muito baixas - Aumente a gravidade!");
                 else
@@ -684,7 +734,7 @@ namespace ProgramacaoAvancada.Services
                 double areaTotal = CanvasWidth * CanvasHeight;
                 double densidade = Corpos.Count / areaTotal * 1000000;
                 sb.AppendLine($"📊 Densidade: {densidade:0.00} corpos/Mpx");
-                
+
                 if (densidade > 10)
                     sb.AppendLine("💡 Área bem utilizada");
                 else if (densidade > 5)
@@ -692,10 +742,11 @@ namespace ProgramacaoAvancada.Services
                 else
                     sb.AppendLine("💡 Área com espaço disponível");
             }
-            
+
             return sb.ToString();
         }
     }
+
 
     // ✅ CLASSE DE OTIMIZAÇÃO PARALELA
     public class OtimizadorParalelo
@@ -709,36 +760,36 @@ namespace ProgramacaoAvancada.Services
             // ✅ HEURÍSTICAS INTELIGENTES
             if (numCorpos < 20) return false;
             if (numCorpos > 500) return true;
-            
+
             // ✅ DECISÃO BASEADA EM HISTÓRICO
             double speedupMedio = CalcularSpeedupMedio();
             return speedupMedio > 1.2; // Só usa paralelo se for 20% mais rápido
         }
-        
+
         public void RegistrarTempo(bool paralelo, double tempo)
         {
             var fila = paralelo ? _temposParalelo : _temposSequencial;
             fila.Enqueue(tempo);
-            
+
             if (fila.Count > HISTORICO_MAXIMO)
                 fila.Dequeue();
         }
-        
+
         public double CalcularSpeedupMedio()
         {
             if (_temposSequencial.Count == 0 || _temposParalelo.Count == 0)
                 return 1.0;
-                
+
             double tempoSeq = _temposSequencial.Average();
             double tempoPar = _temposParalelo.Average();
-            
+
             return tempoSeq / tempoPar;
         }
 
         public (double SpeedupMedio, double TempoMedioFrame, double Eficiencia) ObterEstatisticas()
         {
             double speedup = CalcularSpeedupMedio();
-            double tempoMedio = (_temposSequencial.Concat(_temposParalelo).Any()) ? 
+            double tempoMedio = (_temposSequencial.Concat(_temposParalelo).Any()) ?
                                _temposSequencial.Concat(_temposParalelo).Average() : 0;
             double eficiencia = (speedup / Environment.ProcessorCount) * 100;
 
